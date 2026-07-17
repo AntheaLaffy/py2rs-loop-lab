@@ -1,37 +1,49 @@
 # Philosophy
 
-py2rs 是一种 human-constrained loop engineering 方法。
+[中文版本](philosophy.zh.md)
 
-它承认 AI 在迁移工程中很强：可以读代码、写代码、补测试、写审核报告、维持 manifest 状态。但它也承认一个现实：如果规划、书写、审核、演进方向全交给 AI，人就只剩下“开 loop”和“看结果”的角色。
+py2rs is a loop engineering discipline for controlled rewrites.
 
-py2rs 试图把人的创意和判断力放回系统里。
+It is not trying to maximize creativity. It is trying to preserve engineering control while AI agents perform repetitive migration work. If the work needs free-form invention, broad product ideation or creative taste, this repository is the wrong tool. If the work needs bounded rewrites, behavior parity, review gates and rollback, this repository is the intended tool.
 
-## What The Human Owns
+## Human Constraints First
 
-- 项目为什么要迁移。
-- 哪些公共行为不能变。
-- 哪些 seam 被接受，哪些架构不该引入。
-- 单元切分粒度：速度、token 成本、审核成本和质量之间的取舍。
-- 依赖策略：复用 crate、写 adapter、局部造轮子或全量造轮子的权衡。
-- 哪些实践经验应该固化成项目专属 skill。
+The human owns the constraints that define the loop:
 
-## What The AI Owns
+- the reason for the rewrite
+- accepted architecture seams
+- public behavior that must not change
+- migration unit granularity
+- review budget and token budget
+- dependency source expansion policy
+- crate reuse, adapter or hand-written replacement tradeoffs
+- project-specific rules that deserve their own skills
 
-- 在既定约束下推进一个迁移单元。
-- 收集行为证据。
-- 写 fixture、实现和 review report。
-- 维护 manifest 状态。
-- 在依赖展开后提出重切、合并、延期或替换单元。
+The AI operates inside those constraints.
 
-## The Difference From Generic Vibecoding
+## AI Loop Work
 
-Generic vibecoding 往往把 loop 看成“让 AI 自己规划、自己写、自己审、自己继续”。py2rs 把 loop 拆开：
+The AI can still do substantial work:
 
-- writer 不审自己的代码。
-- behavior review 是第一门。
-- manifest 状态必须对应事实。
-- 依赖展开有边界。
-- 低层 native/runtime 差异默认不追，除非穿透到 public seam。
-- 项目专属约束可以写成 skills，让 AI 下次继续服从这些约束。
+- inspect project facts
+- propose or re-cut manifest units
+- implement one unit at a time
+- add fixtures and tests
+- produce review reports
+- maintain migration state
+- record reusable lessons
 
-The point is not to slow AI down. The point is to give it rails sharp enough that speed still produces engineering-quality code.
+The point is not to slow the loop down. The point is to make sure fast loops keep producing code that can be understood, reviewed and rolled back.
+
+## Why Skills
+
+Skills are the reusable boundary between human intent and AI execution. A good skill records:
+
+- when it should be used
+- what context must be read first
+- which architecture is accepted
+- which decisions are out of scope
+- how evidence is produced
+- what counts as completion
+
+py2rs is the general discipline. Project-specific skills are where the discipline becomes real.

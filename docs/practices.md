@@ -1,10 +1,12 @@
 # Practices
 
+[中文版本](practices.zh.md)
+
 This repository includes two concrete practice families built from the py2rs discipline.
 
 ## mvsep-rs
 
-Location:
+Skills:
 
 - `skills/practices/mvsep-rs-rewrite`
 - `skills/practices/mvsep-rs-batch-writer`
@@ -17,14 +19,14 @@ Key shape:
 - Tauri command -> backend facade seam.
 - Existing command names and progress events are preserved.
 - Writer and reviewer roles are separated.
-- Behavior review is first.
-- No Python router, no forced `py/` and `rs/` layout.
+- Behavior review is the first gate.
+- No Python router and no forced `py/` / `rs/` layout.
 
 This is an example of py2rs as migration discipline rather than fixed implementation template.
 
 ## Vocal2Midi / v2m
 
-Location:
+Skills:
 
 - `skills/practices/vocal2midi-rs-rewrite`
 - `skills/practices/vocal2midi-rs-dep-bootstrap`
@@ -38,7 +40,7 @@ Key shape:
 - Large third-party source corpus is used as local reference material.
 - First-layer direct Python dependencies are useful for high-level wheel rebuilding.
 - Second-layer or deeper dependencies require public-seam call-path evidence.
-- Rust crates and hand-written wheels are complementary.
+- Rust crates and hand-written replacements are complementary.
 - Low-level native/compiler/runtime details are ignored unless they affect public behavior, memory/ABI, persistence, security or model/numeric correctness.
 
 This is an example of py2rs applied to a glue-language project with heavy dependency alignment.
