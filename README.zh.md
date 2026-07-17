@@ -51,8 +51,8 @@ py2rs 结合了：
 
 ## 实践 Skills
 
-- [`mvsep-rs`](skills/practices/mvsep-rs-rewrite/SKILL.md)：Tauri backend facade 重写。
-- [`Vocal2Midi / v2m`](skills/practices/vocal2midi-rs-rewrite/SKILL.md)：依赖复杂的 Python 项目重写。
+- [`mvsep-rs`](skills/practices/mvsep-rs-rewrite/SKILL.md)：[`AntheaLaffy/mvsep-rs`](https://github.com/AntheaLaffy/mvsep-rs) 的 Tauri backend facade 重写实践。
+- [`Vocal2Midi / v2m`](skills/practices/vocal2midi-rs-rewrite/SKILL.md)：[`AntheaLaffy/Vocal2Midi-for-linux`](https://github.com/AntheaLaffy/Vocal2Midi-for-linux) 的重依赖 Python 项目重写实践。
 
 它们是从同一套架构创造出来的项目专属 skills，不是通用模板。
 

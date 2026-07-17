@@ -51,8 +51,8 @@ The source skill is included at [`skills/foundations/teach`](skills/foundations/
 
 ## Practice Skills
 
-- [`mvsep-rs`](skills/practices/mvsep-rs-rewrite/SKILL.md): Tauri backend facade rewrite.
-- [`Vocal2Midi / v2m`](skills/practices/vocal2midi-rs-rewrite/SKILL.md): dependency-heavy Python rewrite.
+- [`mvsep-rs`](skills/practices/mvsep-rs-rewrite/SKILL.md): Tauri backend facade rewrite for [`AntheaLaffy/mvsep-rs`](https://github.com/AntheaLaffy/mvsep-rs).
+- [`Vocal2Midi / v2m`](skills/practices/vocal2midi-rs-rewrite/SKILL.md): dependency-heavy Python rewrite for [`AntheaLaffy/Vocal2Midi-for-linux`](https://github.com/AntheaLaffy/Vocal2Midi-for-linux).
 
 These are examples of project-specific skills created from the same architecture. They are not universal templates.
 

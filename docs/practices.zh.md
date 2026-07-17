@@ -6,6 +6,8 @@
 
 ## mvsep-rs
 
+项目：[`AntheaLaffy/mvsep-rs`](https://github.com/AntheaLaffy/mvsep-rs)
+
 Skills：
 
 - `skills/practices/mvsep-rs-rewrite`
@@ -25,6 +27,8 @@ mvsep-rs 借鉴 py2rs 纪律，但不采用 py2rs 架构。
 这是 py2rs 作为迁移纪律而不是固定模板的例子。
 
 ## Vocal2Midi / v2m
+
+项目：[`AntheaLaffy/Vocal2Midi-for-linux`](https://github.com/AntheaLaffy/Vocal2Midi-for-linux)
 
 Skills：
 

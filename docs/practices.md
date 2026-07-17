@@ -6,6 +6,8 @@ This repository includes two concrete practice families built from the py2rs dis
 
 ## mvsep-rs
 
+Project: [`AntheaLaffy/mvsep-rs`](https://github.com/AntheaLaffy/mvsep-rs)
+
 Skills:
 
 - `skills/practices/mvsep-rs-rewrite`
@@ -25,6 +27,8 @@ Key shape:
 This is an example of py2rs as migration discipline rather than fixed implementation template.
 
 ## Vocal2Midi / v2m
+
+Project: [`AntheaLaffy/Vocal2Midi-for-linux`](https://github.com/AntheaLaffy/Vocal2Midi-for-linux)
 
 Skills:
 
