@@ -20,6 +20,8 @@ If you want open-ended creative exploration, this is the wrong tool. This projec
 
 The core output is not Rust code. The core output is a project-specific loop that can keep producing reviewed Rust code.
 
+If you only want to install the skills into Codex first, see [`docs/installation.md`](docs/installation.md). It includes an "ask AI to install" prompt plus macOS/Linux and Windows manual commands.
+
 ## Core Skills
 
 - [`py2rs`](skills/py2rs/SKILL.md): overall rewrite discipline and routing.
@@ -60,6 +62,7 @@ These are examples of project-specific skills created from the same architecture
 
 English:
 
+- [`docs/installation.md`](docs/installation.md)
 - [`docs/philosophy.md`](docs/philosophy.md)
 - [`docs/architecture.md`](docs/architecture.md)
 - [`docs/review-gates.md`](docs/review-gates.md)

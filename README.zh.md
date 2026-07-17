@@ -20,6 +20,8 @@
 
 核心产物不是 Rust 代码。核心产物是一个能持续产出已审核 Rust 代码的项目专属 loop。
 
+如果你只是想先把 skills 装进 Codex，见 [`docs/installation.zh.md`](docs/installation.zh.md)。教程包含“让 AI 安装”的提示词，以及 macOS/Linux 和 Windows 手动安装命令。
+
 ## 核心 Skills
 
 - [`py2rs`](skills/py2rs/SKILL.md)：总重写纪律和路由。
@@ -68,6 +70,7 @@ py2rs 结合了：
 
 中文：
 
+- [`docs/installation.zh.md`](docs/installation.zh.md)
 - [`docs/philosophy.zh.md`](docs/philosophy.zh.md)
 - [`docs/architecture.zh.md`](docs/architecture.zh.md)
 - [`docs/review-gates.zh.md`](docs/review-gates.zh.md)

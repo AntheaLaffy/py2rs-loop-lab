@@ -8,6 +8,8 @@
 
 把这个仓库作为设计项目专属 skills 的参考。直接复制 skills 可以用于学习或启动，但真正的重写应该先编码自己的项目事实，再进入 loop。
 
+如果你想先安装到 Codex，直接看 [`安装教程`](installation.zh.md)。推荐把教程里的提示词交给 AI 安装；手动安装时，默认目录是 `$CODEX_HOME/skills`，未设置时是 `~/.codex/skills`。
+
 建议从这些开始：
 
 - `skills/py2rs`

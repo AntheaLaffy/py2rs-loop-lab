@@ -8,6 +8,8 @@ This repository is not meant to be dropped into an arbitrary codebase and run as
 
 Keep this repository as a reference when designing project-specific skills. Copying the skills directly can be useful for study or bootstrapping, but a real rewrite should encode its own project facts before the loop starts.
 
+If you want to install them into Codex first, see the [`Installation`](installation.md) guide. The recommended path is to give the guide's prompt to AI; for manual installs, the destination is `$CODEX_HOME/skills`, defaulting to `~/.codex/skills`.
+
 Start with:
 
 - `skills/py2rs`
