@@ -2,9 +2,11 @@
 
 [中文版本](usage.zh.md)
 
+This repository is not meant to be dropped into an arbitrary codebase and run as-is. Use AI to study it, borrow the architecture, and create project-specific rewrite skills.
+
 ## Install Or Reference Skills
 
-Copy the relevant directories under `skills/` into your agent skill directory, or keep this repository as a reference when designing project-specific skills.
+Keep this repository as a reference when designing project-specific skills. Copying the skills directly can be useful for study or bootstrapping, but a real rewrite should encode its own project facts before the loop starts.
 
 Start with:
 
@@ -16,14 +18,26 @@ Start with:
 
 Add R1-R6 review skills according to risk.
 
-## Initialize A Rewrite
+## Required Order
+
+1. Establish the project repository and read its facts.
+2. Ask AI to extract the relevant py2rs ideas for that project.
+3. Decide which ideas fit and which do not.
+4. Create project-specific skills from those decisions.
+5. Initialize the rewrite workspace.
+6. Start the loop only after the manifest/control plane and review policy exist.
+
+## Initialize A Rewrite Workspace
 
 1. Read project truth: mission, architecture, resources, manifest, records and tests.
 2. Identify the accepted seam: CLI, service facade, Tauri command facade, Python module, library API, pipeline stage or another project-specific boundary.
-3. Ask the user for the granularity profile.
-4. Create or reuse a manifest/control plane.
-5. Snapshot first-layer direct Python dependency sources when storage, license and policy allow it.
-6. Define rollback routes before implementation.
+3. Write or adapt project-specific skills for coordination, dependency bootstrap, writer work and review gates.
+4. Ask the user for the granularity profile.
+5. Create or reuse a manifest/control plane.
+6. Snapshot first-layer direct Python dependency sources when storage, license and policy allow it.
+7. Define rollback routes before implementation.
+
+The initialization should preserve the [`teach`](../skills/foundations/teach/SKILL.md)-style progression model: mission first, resources before memory, records for non-obvious lessons, notes for preferences and small units with feedback.
 
 ## Work One Unit
 
@@ -36,7 +50,7 @@ Add R1-R6 review skills according to risk.
 7. Run additional review roles required by the manifest.
 8. Promote only after review evidence exists.
 
-## Build Project-Specific Skills
+## Build Project-Specific Skills First
 
 py2rs should usually lead to project-specific skills once stable project patterns are visible.
 

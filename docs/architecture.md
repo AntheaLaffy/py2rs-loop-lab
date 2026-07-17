@@ -4,6 +4,8 @@
 
 py2rs does not require one fixed directory layout. It defines a control plane and review discipline for incremental rewrites.
 
+This is a meta-skill architecture. The core skills describe how to create project-specific rewrite skills; they are not a finished workflow that should be applied before a project has its own facts, constraints, manifest and accepted seam.
+
 ## Control Plane
 
 The control plane records:
@@ -17,6 +19,19 @@ The control plane records:
 - current state
 
 The control plane can be a YAML manifest, Tauri backend facade, HTTP adapter, CLI dispatcher, feature flag registry or pipeline stage registry. A Python router is only appropriate when Python remains the orchestrating process.
+
+## Stateful Workspace
+
+The workspace should make progress durable across sessions. The structure is inspired by [`teach`](../skills/foundations/teach/SKILL.md):
+
+- mission: why this rewrite exists and what must not be lost
+- resources: source-of-truth docs, dependency sources and trusted references
+- notes: user preferences, project constraints and temporary observations
+- records: non-obvious migration lessons and decisions
+- manifest: current state, owners, verification and rollback
+- reviews: durable evidence for promotion decisions
+
+Without this state, a loop becomes memory-driven. py2rs assumes memory is not enough.
 
 ## Granularity Profile
 

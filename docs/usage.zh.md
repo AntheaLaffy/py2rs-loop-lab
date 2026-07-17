@@ -2,9 +2,11 @@
 
 [English version](usage.md)
 
+这个仓库不是复制到任意代码库就能直接运行的成品工具。正确用法是让 AI 研究它、借鉴架构，再为具体项目创造项目专属 rewrite skills。
+
 ## 安装或参考 Skills
 
-把 `skills/` 下需要的目录复制到 agent 的 skill 目录，或把这个仓库作为设计项目专属 skills 的参考。
+把这个仓库作为设计项目专属 skills 的参考。直接复制 skills 可以用于学习或启动，但真正的重写应该先编码自己的项目事实，再进入 loop。
 
 建议从这些开始：
 
@@ -16,14 +18,26 @@
 
 再根据风险加入 R1-R6 审核 skills。
 
-## 初始化重写
+## 必须遵守的顺序
+
+1. 先建立具体项目仓库并读取项目事实。
+2. 让 AI 提取对这个项目有用的 py2rs 思想。
+3. 判断哪些思想适合这个项目，哪些不适合。
+4. 根据这些决策创建项目专属 skills。
+5. 初始化重写工作区。
+6. 只有 manifest/control plane 和 review policy 存在后，才开始 loop。
+
+## 初始化重写工作区
 
 1. 读取项目事实：mission、architecture、resources、manifest、records 和 tests。
 2. 识别接受的 seam：CLI、service facade、Tauri command facade、Python module、library API、pipeline stage 或其它项目专属边界。
-3. 询问用户 granularity profile。
-4. 创建或复用 manifest/control plane。
-5. 在存储、license 和项目政策允许时，snapshot 第一层直接 Python 依赖源码。
-6. 在实现前定义回滚路径。
+3. 为 coordination、dependency bootstrap、writer work 和 review gates 编写或改造项目专属 skills。
+4. 询问用户 granularity profile。
+5. 创建或复用 manifest/control plane。
+6. 在存储、license 和项目政策允许时，snapshot 第一层直接 Python 依赖源码。
+7. 在实现前定义回滚路径。
+
+初始化时应该保留 [`teach`](../skills/foundations/teach/SKILL.md) 式渐进模型：mission first、resources before memory、records 记录非显然经验、notes 保存偏好、小单元配合反馈循环。
 
 ## 推进一个单元
 
@@ -36,7 +50,7 @@
 7. 运行 manifest 要求的其它 review roles。
 8. 只有在 review evidence 存在后才能 promotion。
 
-## 构建项目专属 Skills
+## 先构建项目专属 Skills
 
 当项目模式稳定后，py2rs 通常应该发展出项目专属 skills。
 
