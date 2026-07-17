@@ -20,6 +20,39 @@ If you want open-ended creative exploration, this is the wrong tool. This projec
 
 The core output is not Rust code. The core output is a project-specific loop that can keep producing reviewed Rust code.
 
+## Stateful Incremental Repository Architecture
+
+py2rs does not rely on one long prompt to finish a migration. It turns the migration into a stateful, resumable, reviewable and rollbackable repository workflow. Each AI session should read the durable state instead of relying on chat memory.
+
+- `mission`: records why the rewrite exists, what success means and which behaviors or constraints must not be lost
+- `resources`: stores source-of-truth docs, existing tests, dependency source snapshots, protocol notes and trusted references so AI does not rewrite from memory
+- `notes`: captures user preferences, project constraints, temporary observations and information not yet promoted into rules
+- `records`: preserves non-obvious decisions, lessons, behavior differences, dependency tradeoffs and review conclusions for later sessions
+- `manifest` / checklist: records each migration unit's state, owner, target owner, verification commands, rollback route and required review gates; this is the rewrite control plane
+- dependency alignment: maps Python dependencies, Rust crates, compatibility adapters and hand-written replacements by capability coverage instead of translating package names one-to-one
+- bootstrap: proves the chosen seam handles parameters, return values, errors, logs, tests and rollback before business logic is migrated
+- review evidence: moves a unit from "reimplemented" toward "verified" or "promoted" only after R0 behavior parity and any required R1-R6 reviews
+
+The point of this architecture is that the system stays runnable, testable and rollbackable at every migration state. Even if a new AI session takes over, it can continue from the repository's mission, records, manifest and reviews instead of guessing project state.
+
+## What The Rust Output Should Look Like
+
+After using these skills to migrate Python to Rust, the first-stage Rust code is not meant to be a line-by-line Python translation, and it is not meant to be maximally elegant or idiomatic Rust immediately. The first target is narrower and more important: a strictly behavior-compatible Rust version backed by broad, complete tests.
+
+The migrated Rust code should prove:
+
+- public behavior matches the original Python version
+- edge cases, error paths, fixtures and regressions are covered by tests
+- each migration unit has review evidence instead of relying on code that merely looks correct
+
+After the py-to-rs behavior migration is complete, give AI a separate goal:
+
+```text
+Adopt Rust community standards and build complete documentation.
+```
+
+If you still have capacity after that, ask AI to optimize the code toward Rust community style and structure. That phase should happen only after behavior tests are stable, and every style pass should rerun behavior review and the full test suite.
+
 If you only want to install the skills into Codex first, see [`docs/installation.md`](docs/installation.md). It includes an "ask AI to install" prompt plus macOS/Linux and Windows manual commands.
 
 ## Core Skills
