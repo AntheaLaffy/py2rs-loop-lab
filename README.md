@@ -47,7 +47,7 @@ py2rs combines:
 - **rewrite discipline**: behavior before architecture, reversible state, manifest-driven progress and independent review gates.
 - **project-specific adaptation**: each real project keeps its accepted seam instead of adopting a fixed py2rs directory layout.
 
-The source skill is included at [`skills/foundations/teach`](skills/foundations/teach/SKILL.md).
+The source skill is included at [`skills/foundations/teach`](skills/foundations/teach/SKILL.md). It comes from Matt Pocock's [`mattpocock/skills`](https://github.com/mattpocock/skills) repository; see [`THIRD_PARTY.md`](THIRD_PARTY.md).
 
 ## Practice Skills
 

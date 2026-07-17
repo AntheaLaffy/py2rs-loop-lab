@@ -10,7 +10,7 @@ py2rs 是一种用于受控重写的 loop engineering 纪律。
 
 ## 来自 teach 的渐进思想
 
-py2rs 的渐进模型很大一部分来自 [`teach`](../skills/foundations/teach/SKILL.md) skill。
+py2rs 的渐进模型很大一部分来自 [`teach`](../skills/foundations/teach/SKILL.md) skill；该 skill 原始来源是 Matt Pocock 的 [`mattpocock/skills`](https://github.com/mattpocock/skills) 仓库。
 
 在 `teach` 里，学习不是一次回答，而是一个状态化工作区：
 

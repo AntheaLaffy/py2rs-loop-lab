@@ -47,7 +47,7 @@ py2rs 结合了：
 - **重写纪律**：行为先于架构、可逆状态、manifest 驱动进度、独立审核门。
 - **项目专属适配**：真实项目保留自己接受的 seam，不强制采用 py2rs 固定目录结构。
 
-来源 skill 已收录在 [`skills/foundations/teach`](skills/foundations/teach/SKILL.md)。
+来源 skill 已收录在 [`skills/foundations/teach`](skills/foundations/teach/SKILL.md)。它来自 Matt Pocock 的 [`mattpocock/skills`](https://github.com/mattpocock/skills) 仓库；见 [`THIRD_PARTY.md`](THIRD_PARTY.md)。
 
 ## 实践 Skills
 

@@ -10,7 +10,7 @@ The skills in this repository are architecture and thinking skills. They are pri
 
 ## Borrowed From teach
 
-py2rs borrows a large part of its progression model from the [`teach`](../skills/foundations/teach/SKILL.md) skill.
+py2rs borrows a large part of its progression model from the [`teach`](../skills/foundations/teach/SKILL.md) skill, originally from Matt Pocock's [`mattpocock/skills`](https://github.com/mattpocock/skills) repository.
 
 In `teach`, learning is not a single answer. It is a stateful workspace:
 
