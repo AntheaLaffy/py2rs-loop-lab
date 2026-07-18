@@ -8,6 +8,7 @@ manifest owns migration state and granularity; per-unit records own applied deci
 
 - [Stage 1: Rewrite Strategy](#stage-1-rewrite-strategy)
 - [Stage 2: Relevant Framework Choices](#stage-2-relevant-framework-choices)
+- [Crate Reconnaissance And Network](#crate-reconnaissance-and-network)
 - [NOTES.md Schema](#notesmd-schema)
 - [Handoff To Dependency Alignment](#handoff-to-dependency-alignment)
 
@@ -65,6 +66,26 @@ When one broad category needs multiple constraints, use clear sub-capability
 keys rather than overwriting a choice, for example `public_library_errors` and
 `application_error_context`.
 
+## Crate Reconnaissance And Network
+
+Record how the project wants to pay for Rust ecosystem research:
+
+- `agent`: default. Run `py2rs-crate-recon` in a fresh context and give only its
+  summary to dependency alignment.
+- `manual`: save agent tokens; the user supplies candidate, feature, dependency
+  path, and rejection evidence before dependency alignment.
+- `disabled`: skip ecosystem evidence. Before accepting this, warn: "Disabling
+  crate reconnaissance removes py2rs' evidence that a maintained crate or
+  transitive backend exists. Choose this only if you understand the Rust
+  ecosystem or will manually search crates.io/docs.rs and dependency features."
+
+For `disabled`, require a non-empty acknowledgement in `NOTES.md`. Do not infer
+that no crate exists, and do not label the skip as completed research.
+
+Registry connectivity is also a project usage preference. Record a non-secret
+proxy URL or an `env:VARIABLE_NAME` reference. Never store credentials, tokens,
+or a proxy URL containing user information in `NOTES.md`.
+
 ## NOTES.md Schema
 
 Create or update one fenced YAML block under `## Py2rs Rewrite Preferences`:
@@ -76,6 +97,22 @@ rewrite_preferences:
     profile: standard # standard | ecosystem_first | handwritten_first | domain_from_scratch | custom
     source: default # user | default
     common_infrastructure: allowed
+  crate_reconnaissance:
+    mode: agent # agent | manual | disabled
+    source: default # user | default
+    disabled_acknowledgement: null
+  network:
+    crates_io:
+      proxy: none # none | env:VARIABLE_NAME | non-secret URL
+      source: default # user | default
+  project_skills:
+    default_mode: prompt # prompt | scaffold
+    archive_root: .py2rs/skill-archive
+    roles:
+      dependency_bootstrap:
+        mode: scaffold
+        active: .claude/skills/project-dependency-bootstrap
+        archived: .py2rs/skill-archive/dependency-bootstrap/prompt
   frameworks:
     async_runtime:
       selection: auto # auto | none | crate/framework name
@@ -91,6 +128,13 @@ Omit capability categories that are not relevant. Use these semantics:
   whole dependency category.
 - `auto`: let dependency alignment choose later from project facts and current
   official sources.
+- `crate_reconnaissance.mode: manual` requires user-supplied ecosystem evidence;
+  `disabled` requires the warning acknowledgement but no report.
+- A proxy is a runtime preference. Pass it to discovery commands without writing
+  project `.cargo/config.toml` files.
+- Only one mode of each project skill role may live in agent discovery roots.
+  Archive the counterpart outside those roots, require role/mode markers on both
+  variants, update this block from the switcher's output, and then start a fresh session.
 
 Update this block in place when preferences change. Do not duplicate it in the
 manifest and do not add dependencies during this interview.
@@ -104,6 +148,8 @@ Initialization is complete when:
 - every detected architecture-significant category is selected or marked
   `auto`;
 - hard requirements and exclusions are unambiguous;
+- crate reconnaissance mode, risk acknowledgement, and registry proxy are explicit;
+- every project skill role has one active prompt/scaffold mode and an external archive path;
 - `Cargo.toml` and lockfiles are unchanged by preference capture alone.
 
 `py2rs-dep-align` later applies this profile to one seam or migration unit. A

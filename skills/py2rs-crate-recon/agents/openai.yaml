@@ -1,0 +1,4 @@
+interface:
+  display_name: "py2rs Crate Recon"
+  short_description: "Research Rust crate capability and dependency paths"
+  default_prompt: "Use $py2rs-crate-recon to research Rust crate candidates before dependency alignment."

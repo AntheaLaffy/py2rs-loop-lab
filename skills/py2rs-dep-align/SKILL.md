@@ -1,6 +1,6 @@
 ---
 name: "py2rs-dep-align"
-description: "[DRAFT] 按项目在 NOTES.md 中记录的重写力度和框架偏好，对齐渐进式 Python/Rust 或 legacy/Rust 重写所需依赖。覆盖依赖源码展开、crate 复用/adapter/手写补齐、manifest 重切、项目 seam、验证命令和桥接方式。"
+description: "[DRAFT] 消费 crate reconnaissance 或用户手动生态证据，按 NOTES.md 中的重写力度和框架偏好对齐 Python/Rust 或 legacy/Rust 依赖。覆盖 crate/backend/adapter/手写能力组合、manifest 重切、seam、验证和桥接。"
 ---
 
 # py2rs-dep-align — 依赖与能力对齐
@@ -14,6 +14,8 @@ Stage 0 的目标是证明迁移有可行的能力覆盖和集成路径。先对
 - 项目依赖清单：`requirements.txt`、`pyproject.toml`、`Cargo.toml`、lockfile、package manifests。
 - 项目事实：mission、architecture、manifest、resources、records。
 - `NOTES.md` 中的 `rewrite_preferences`；缺失时使用 `standard` 并记录这是默认假设。
+- `crate_reconnaissance.mode` 及对应的 agent report、manual evidence 或
+  disabled acknowledgement。
 - 目标迁移单元的公共接口和验证方式。
 - 已有第三方源码快照、vendored sources、native sources、source audit 或等价记录。
 
@@ -44,6 +46,41 @@ before changing the preference.
 Do not treat example crate names in py2rs documentation as a current catalog.
 Inspect existing project choices and verify maintained candidates against
 current official sources before selecting a new framework.
+
+## Crate Reconnaissance Gate
+
+Apply the mode recorded in `NOTES.md` before comparing implementation paths:
+
+- `agent`: require a fresh-context `py2rs-crate-recon` report with status
+  `complete` or `policy_rejected`. A `blocked` or missing report blocks this
+  dependency alignment stage.
+- `manual`: require user-supplied evidence naming searched capabilities,
+  candidates, relevant features/dependency paths, and rejection or fit reasons.
+  Record status `manual`; missing evidence blocks the stage.
+- `disabled`: verify the stored acknowledgement that the user understands the
+  Rust ecosystem or will search it independently. Continue with status
+  `user_disabled`, but do not claim that no maintained crate/backend exists or
+  that ecosystem coverage is complete.
+
+`disabled` skips the independent comparative reconnaissance stage. It does not
+waive minimum official-source due diligence for a dependency the unit actually
+selects, but that narrow check cannot be presented as complete ecosystem search.
+Keep the acknowledgement only in `NOTES.md`; unit records reference that source
+and retain residual risk instead of copying the preference text.
+
+In `agent` mode, require focused candidate documentation evidence. Context7 is
+the default provider and should be bootstrapped when missing; docs.rs or
+downloaded crate source is an acceptable fallback only when the report records
+why Context7 setup, service access, or indexing could not serve the candidate.
+
+When enabled, search by public capability, inspect the three most relevant
+candidates, and always inspect user-named candidates. For umbrella/high-level
+crates, follow only capability-relevant features and dependencies until the
+actual owner is found. Top-level API mismatch alone is not a rejection reason.
+
+Read the reconnaissance summary first. Load raw registry/Cargo evidence only
+when challenging a candidate decision; this keeps implementation context from
+overwriting the independent research judgment.
 
 ## Capability Coverage
 
@@ -237,6 +274,12 @@ preference_application:
       decision: use
   deviations: []
 
+crate_reconnaissance:
+  mode: agent # agent | manual | disabled
+  status: complete # complete | policy_rejected | manual | user_disabled | blocked
+  report: "rewrite-records/dependencies/example-unit-crate-recon.yaml"
+  residual_risk: null
+
 rust:
   edition: "2024"
   crates:
@@ -307,6 +350,10 @@ verification:
 ## Checks
 
 - Toolchains are available (`python`, `cargo`, project build tools).
+- Crate reconnaissance matches the mode in `NOTES.md`; missing/blocked agent
+  reports and incomplete manual evidence stop the stage.
+- `user_disabled` references the acknowledgement stored in `NOTES.md` and
+  records residual ecosystem risk instead of pretending that search evidence exists.
 - The dependency record names the rewrite preference source and applied profile.
 - Every preference deviation has a reason; no `require` or `avoid` rule is
   violated without a new user decision.
@@ -323,8 +370,9 @@ verification:
   correctness.
 - The dependency record does not treat fewer Rust dependencies as a success
   metric.
-- Under `standard` or `ecosystem_first`, the review challenges unnecessary full
-  hand-written rewrites when a crate can safely own a stable lower layer.
+- Under `standard` or `ecosystem_first`, enabled/manual reconnaissance challenges
+  unnecessary full hand-written rewrites when a crate can safely own a stable
+  lower layer.
 - Under a hand-written profile, domain crate reuse is rejected or explicitly
   reconciled with the recorded user preference.
 - Full hand-written replacements under `standard` or `ecosystem_first` include a

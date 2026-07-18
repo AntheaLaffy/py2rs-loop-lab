@@ -16,9 +16,18 @@ If you want open-ended creative exploration, this is the wrong tool. This projec
 2. Ask AI to study this repository's ideas and architecture.
 3. Have AI design project-specific skills for that repository: coordinator, dependency/bootstrap, writer and review gates.
 4. Initialize the rewrite workspace: mission, resources, notes, records, manifest, rewrite/framework preferences, dependency source policy and granularity profile.
-5. Enter the loop: align dependencies, implement one unit, run R0, then add R1-R6 gates as needed.
+5. Enter the loop: research crate capability paths, align dependencies, implement one unit, run R0, then add R1-R6 gates as needed.
 
 The core output is not Rust code. The core output is a project-specific loop that can keep producing reviewed Rust code.
+
+## Current Architecture
+
+The architecture separates two decisions that are easy to conflate:
+
+- **Dependency and rewrite policy**: initialization records rewrite depth, relevant framework preferences, crate reconnaissance mode and the project's own crates.io proxy in `NOTES.md`. When a capability is actually needed, Context7, registry search and the Cargo graph determine whether to reuse a crate, call a lower backend, add an adapter or hand-write the semantic difference.
+- **Project skill execution mode**: each coordinator, dependency bootstrap, writer or review role independently selects `prompt` or `scaffold`. Use `prompt` while the workflow still needs creative iteration; switch to `scaffold` only after its inputs, outputs and failure paths are stable and validated, so scripts can own deterministic operations.
+
+The two variants may replace each other as the project matures, but exactly one variant per role may remain under agent discovery roots. Archive the counterpart outside those roots, write the new state back to `NOTES.md`, then start a fresh session. This preserves freedom for architectural judgment without spending prompt tokens on mechanics that have already stabilized.
 
 ## Stateful Incremental Repository Architecture
 
@@ -29,17 +38,20 @@ py2rs does not rely on one long prompt to finish a migration. It turns the migra
 - `notes`: captures user preferences, including the rewrite-depth and framework profile, plus project constraints and temporary observations
 - `records`: preserves non-obvious decisions, lessons, behavior differences, dependency tradeoffs and review conclusions for later sessions
 - `manifest` / checklist: records each migration unit's state, owner, target owner, verification commands, rollback route and required review gates; this is the rewrite control plane
+- crate reconnaissance: searches by capability, uses Context7 for focused API/feature docs, and follows Cargo dependencies before a high-level crate is rejected or behavior is hand-written
 - dependency alignment: applies the recorded rewrite/framework preferences while mapping Python dependencies, Rust crates, compatibility adapters and hand-written replacements by capability coverage
 - bootstrap: proves the chosen seam handles parameters, return values, errors, logs, tests and rollback before business logic is migrated
 - review evidence: moves a unit from "reimplemented" toward "verified" or "promoted" only after R0 behavior parity and any required R1-R6 reviews
 
 The point of this architecture is that the system stays runnable, testable and rollbackable at every migration state. Even if a new AI session takes over, it can continue from the repository's mission, records, manifest and reviews instead of guessing project state.
 
-### Rewrite Preferences And Dependency Timing
+### Initialization Preferences And Dependency Timing
 
-The initialization architecture separates user intent from migration state. A two-stage interview first records the overall rewrite strategy, then asks only about framework categories detected in the project. These durable choices live in `NOTES.md`; migration ownership, verification and rollback remain in the manifest.
+The initialization architecture separates user intent from migration state. A two-stage interview first records the overall rewrite strategy, then asks only about framework categories detected in the project. It also records whether crate reconnaissance is agent-run, manual or disabled, plus any crates.io proxy. These durable choices live in `NOTES.md`; migration ownership, verification and rollback remain in the manifest.
 
-Initialization does not preinstall speculative crates. When a seam or migration unit enters dependency alignment, py2rs combines the recorded preferences with project facts, behavior fixtures and current dependency evidence, then adds and locks only the dependencies that unit needs. The resulting unit record explains how the preference was applied or why it had to change, and bootstrap verifies the selected stack before business logic moves.
+Initialization does not preinstall speculative crates. Agent reconnaissance runs in a fresh context and gives dependency alignment a compact evidence report; manual mode lets a Rust-ecosystem expert provide the same evidence. Reconnaissance can be disabled to save tokens, but py2rs then warns that the user must understand or manually research crates.io, docs.rs and feature/dependency paths. Only after alignment are required crates added and locked.
+
+See [Architecture](docs/architecture.md#project-skill-scaffolding) for the mode lifecycle and [Usage](docs/usage.md#switch-project-skill-modes) for the operational sequence.
 
 ## What The Rust Output Should Look Like
 
@@ -59,12 +71,13 @@ Adopt Rust community standards and build complete documentation.
 
 If you still have capacity after that, ask AI to optimize the code toward Rust community style and structure. That phase should happen only after behavior tests are stable, and every style pass should rerun behavior review and the full test suite.
 
-If you only want to install the skills into Codex first, see [`docs/installation.md`](docs/installation.md). It includes an "ask AI to install" prompt plus macOS/Linux and Windows manual commands.
+If you only want to install the skills into Codex or Claude first, see [`docs/installation.md`](docs/installation.md). It covers both discovery directories, Context7 setup, an "ask AI to install" prompt and macOS/Linux and Windows manual commands.
 
 ## Core Skills
 
 - [`py2rs`](skills/py2rs/SKILL.md): overall rewrite discipline and routing.
 - [`py2rs-runtime`](skills/py2rs-runtime/SKILL.md): rewrite preferences, control plane, manifest, state model, shards and granularity.
+- [`py2rs-crate-recon`](skills/py2rs-crate-recon/SKILL.md): fresh-context capability search, Context7 documentation checks and Cargo feature/dependency evidence.
 - [`py2rs-dep-align`](skills/py2rs-dep-align/SKILL.md): dependency source expansion and capability alignment.
 - [`py2rs-env-bootstrap`](skills/py2rs-env-bootstrap/SKILL.md): seam proof before business migration.
 

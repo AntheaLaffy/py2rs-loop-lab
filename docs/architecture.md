@@ -33,6 +33,44 @@ The workspace should make progress durable across sessions. The structure is ins
 
 Without this state, a loop becomes memory-driven. py2rs assumes memory is not enough.
 
+## Project Skill Scaffolding
+
+Meta-skills retain architecture judgment because seams, domain ownership and
+migration boundaries depend on project truth. Once those decisions stabilize,
+repository initialization should generate project-specific operational skills.
+Their documentation records steps and schemas; tested scripts own deterministic
+registry collection, state transitions, fixture orchestration and report checks.
+
+This reduces repeated prompt mechanics without pretending that code generation
+can replace architectural reasoning. A role stays in `prompt` mode while its
+workflow is evolving and moves to `scaffold` mode when its mechanics are stable.
+Only one variant may be discoverable; archive the counterpart outside every
+agent skill root and start a fresh session after switching. Do not scaffold
+workflows whose inputs, outputs or failure modes are still speculative.
+
+### Mode Lifecycle
+
+Mode is selected per role; it is not one project-wide choice. A newly generated
+role defaults to `prompt`. It may move to `scaffold` only after its inputs,
+outputs, failure paths, completion criteria and recovery behavior are stable and
+test or forward-test evidence exists.
+
+Both variants of a role use the same skill name and record role, mode and a
+real-file `validation_evidence` path in `.py2rs-skill-variant.json`. The active
+variant lives under an agent discovery root. The inactive variant lives under
+the project's `.py2rs/skill-archive` or another directory excluded from
+discovery. Every Claude, Codex or other discovery root actually used for the
+project participates in duplicate checks; changing a directory or skill name
+cannot bypass the one-active-variant-per-role invariant.
+
+A mode switch is a durable state transition. Dry-run first, then move the two
+variants on one filesystem under a lock and journal. After files switch, the
+journal remains `switched_pending_notes` until `NOTES.md` records the new mode,
+active path and archived path and that update is explicitly acknowledged. Start
+a fresh session only after the journal clears. Moving files cannot retract old
+instructions already loaded into the current context, so the new session is a
+correctness requirement rather than a convenience.
+
 ## Granularity Profile
 
 The rewrite should ask the user how fine the units should be during initialization.
@@ -58,11 +96,27 @@ Repository initialization uses a separate preference profile to record how stron
 
 After the overall strategy, ask only about framework categories detected in the project, such as async, errors/tracing, numeric/ML, Web, UI or persistence. Candidate names in the skills are examples; actual choices must respect the current project and current official sources.
 
+The same `NOTES.md` profile selects crate reconnaissance mode:
+
+- `agent`: default; a fresh-context researcher produces bounded crates.io and Cargo dependency evidence
+- `manual`: the user supplies candidate, feature and dependency-path evidence to save agent tokens
+- `disabled`: skips evidence after warning that the user must understand or manually research the Rust ecosystem
+
+Registry proxy configuration is a project usage preference. Store a non-secret URL or environment-variable reference in `NOTES.md`; do not commit machine-specific Cargo configuration or credentials.
+
 Initialization records these choices but does not add crates or modify a lockfile. Dependency alignment applies the profile when a seam or migration unit needs the capability. Hard `require` and `avoid` preferences cannot be silently overridden.
 
 ## Dependency Alignment
 
 Dependencies are aligned by capability, not by package name.
+
+Enabled reconnaissance uses three evidence layers that do not replace each other:
+
+- Registry search discovers the three most relevant candidates for a public capability and adds every user-named candidate; named candidates do not consume the Top 3.
+- Context7 checks focused APIs, features and official examples. Bootstrap it when missing; fall back explicitly to docs.rs or crate source only when setup, service access or indexing fails.
+- Cargo `info`, `metadata` and `tree` prove the resolved version, feature selection and dependency paths to the actual container, codec, runtime or other capability owner.
+
+An umbrella crate cannot be rejected from its public API alone. `direct` means the target implementation can call the candidate's public API; `backend` means it should bypass the umbrella API and call a feature-selected lower dependency. Dependency alignment consumes the compact report and loads raw evidence only to challenge a conclusion.
 
 Allowed paths:
 
@@ -72,6 +126,8 @@ Allowed paths:
 - full hand-written replacement when it is smaller, safer or easier to verify than crate reuse plus adapter
 
 Fewer Rust dependencies is not a success metric. Under `standard`, full wheel rebuilding is not the default either. The selected path must follow the recorded rewrite profile, and each unit records how the preference was applied or why it was changed.
+
+Disabled reconnaissance is recorded as `user_disabled`, not as completed search. It permits progress but leaves explicit residual ecosystem risk.
 
 ## Source Expansion
 

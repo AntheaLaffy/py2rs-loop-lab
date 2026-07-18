@@ -1,6 +1,6 @@
 ---
 name: "py2rs-runtime"
-description: "[DRAFT] 初始化 py2rs 重写偏好并建立迁移控制面：在 NOTES.md 记录依赖重写力度和框架偏好，维护 manifest 或 manifest shards、迁移粒度、状态机、路由/adapter、回滚和审计。Python router/FFI bridge 只是可选实现。"
+description: "[DRAFT] 初始化 py2rs 重写偏好并建立迁移控制面：在 NOTES.md 记录依赖重写力度、框架偏好、crate 侦察模式和 registry 代理，维护 manifest 或 manifest shards、迁移粒度、状态机、路由/adapter、回滚和审计。"
 ---
 
 # py2rs-runtime — 迁移控制面与可选路由层
@@ -12,9 +12,10 @@ description: "[DRAFT] 初始化 py2rs 重写偏好并建立迁移控制面：在
 1. 读取项目事实：mission、architecture、resources、notes、manifest、records、tests 或等价文件。
 2. 确认项目已有 seam。如果已有稳定 facade/adapter/command/API boundary，优先沿用。
 3. 初始化仓库时，询问或读取用户的 rewrite preferences，并把偏好写入 `NOTES.md`。
-4. 初始化仓库或重切 manifest 前，询问或读取用户的 granularity profile。
-5. 只有在 Python 进程仍是统一入口时，才创建 Python runtime router。
-6. 若项目已有控制面，扩展它；不要另起一个与项目冲突的 py2rs manifest。
+4. 项目事实、seam 和偏好稳定后，为固定操作创建项目专属 script-backed skills。
+5. 初始化仓库或重切 manifest 前，询问或读取用户的 granularity profile。
+6. 只有在 Python 进程仍是统一入口时，才创建 Python runtime router。
+7. 若项目已有控制面，扩展它；不要另起一个与项目冲突的 py2rs manifest。
 
 ## Runtime Means Control Plane
 
@@ -72,6 +73,10 @@ units:
     current_owner: legacy
     target_owner: rust
     public_interface_policy: "Preserve existing public behavior."
+    dependency_recon:
+      mode: agent # agent | manual | disabled
+      status: pending # not_required | pending | complete | policy_rejected | manual | user_disabled | blocked
+      report: null
     required_reviews:
       - behavior_reviewer
     verification:
@@ -136,8 +141,25 @@ more questions.
 
 Do not add crates or change a lockfile while capturing preferences. The profile
 is complete when every detected, architecture-significant category has either
-an explicit selection or `auto`, the source and strength are recorded, and the
-fenced YAML block in `NOTES.md` is internally consistent.
+an explicit selection or `auto`, crate reconnaissance is `agent`, `manual`, or
+`disabled`, any registry proxy is recorded safely, and the fenced YAML block in
+`NOTES.md` is internally consistent.
+
+Default crate reconnaissance to `agent`. Before accepting `disabled`, warn that
+py2rs will no longer prove whether a maintained crate or transitive backend
+exists, and that the user should understand the Rust ecosystem or perform their
+own crates.io/docs.rs and feature/dependency search. Record the acknowledgement
+so later sessions do not confuse an intentional skip with completed research.
+
+## Project Skill Scaffolding
+
+After project facts, accepted seam, preferences, and state locations are known,
+read [project-skill-scaffolding.md](references/project-skill-scaffolding.md)
+completely. Use it to turn stable operational loops into project-specific
+script-backed skills while leaving architecture choices in reasoning skills.
+Select `prompt` or `scaffold` independently for each project role. Keep exactly
+one variant under agent skill discovery roots; archive its counterpart outside
+those roots and start a fresh session after every mode switch.
 
 ## Manifest Shards
 
@@ -269,6 +291,9 @@ The bridge must preserve public behavior and error semantics until a migration u
 - A manifest/control-plane file or confirmed reuse of the project manifest.
 - A rewrite preference profile in `NOTES.md`, using `standard` defaults where
   the user declined customization.
+- A crate reconnaissance mode and any crates.io proxy preference in `NOTES.md`.
+- Project-specific skills for stable operational loops, or an explicit record
+  that the project is not stable enough to scaffold them yet.
 - A recorded granularity profile, or an explicit assumption that `balanced` is
   being used until the user decides.
 - For large parallel rewrites, either a root manifest with shard manifests or an
@@ -288,6 +313,8 @@ The bridge must preserve public behavior and error semantics until a migration u
 - Unit sizes and review requirements match the recorded granularity profile.
 - Rewrite preferences live in `NOTES.md`; repository initialization has not
   introduced speculative Cargo dependencies.
+- Every dependency-sensitive unit distinguishes completed, manual, disabled,
+  and blocked crate reconnaissance instead of treating missing evidence as a pass.
 - For sharded manifests, shard boundaries, dependencies and cross-shard contracts
   are explicit enough for separate Codex sessions to work without editing the
   same control-plane scope.

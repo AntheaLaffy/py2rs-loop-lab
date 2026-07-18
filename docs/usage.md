@@ -8,12 +8,13 @@ This repository is not meant to be dropped into an arbitrary codebase and run as
 
 Keep this repository as a reference when designing project-specific skills. Copying the skills directly can be useful for study or bootstrapping, but a real rewrite should encode its own project facts before the loop starts.
 
-If you want to install them into Codex first, see the [`Installation`](installation.md) guide. The recommended path is to give the guide's prompt to AI; for manual installs, the destination is `$CODEX_HOME/skills`, defaulting to `~/.codex/skills`.
+If you want to install them into Codex or Claude first, see the [`Installation`](installation.md) guide. The recommended path is to give the guide's prompt to AI. Codex uses `$CODEX_HOME/skills`, defaulting to `~/.codex/skills`; Claude Code uses `~/.claude/skills`.
 
 Start with:
 
 - `skills/py2rs`
 - `skills/py2rs-runtime`
+- `skills/py2rs-crate-recon`
 - `skills/py2rs-dep-align`
 - `skills/py2rs-env-bootstrap`
 - `skills/py2rs-review-r0-behavior`
@@ -34,26 +35,79 @@ Add R1-R6 review skills according to risk.
 1. Read project truth: mission, architecture, resources, manifest, records and tests.
 2. Identify the accepted seam: CLI, service facade, Tauri command facade, Python module, library API, pipeline stage or another project-specific boundary.
 3. Write or adapt project-specific skills for coordination, dependency bootstrap, writer work and review gates.
-4. Ask for the overall rewrite strategy, then ask only about framework categories detected in the project. Store the result in `NOTES.md`; use `standard` when the user declines customization.
+4. Ask for the overall rewrite strategy, relevant framework categories, crate reconnaissance mode and crates.io proxy. Store them in `NOTES.md`; default to `standard` plus agent reconnaissance.
 5. Ask the user for the granularity profile.
 6. Create or reuse a manifest/control plane.
 7. Snapshot first-layer direct Python dependency sources when storage, license and policy allow it.
 8. Define rollback routes before implementation.
 
-Preference capture does not add crates or change a lockfile. Dependencies are added and locked when a seam or selected migration unit reaches dependency alignment.
+Preference capture does not add crates or change a lockfile. Reconnaissance may be `agent`, `manual` or `disabled`; disabling saves tokens but requires the user to understand or manually research the Rust ecosystem. Dependencies are added and locked only after reconnaissance policy and dependency alignment are satisfied.
+
+`agent` mode requires working Context7 access. If it is missing, bootstrap it through the [Installation](installation.md#configure-context7) guide; missing tooling is not evidence that no suitable crate exists. `disabled` skips independent comparative ecosystem research, not minimum official-source due diligence for a dependency the unit actually selects, and it cannot support a claim of complete ecosystem coverage.
 
 The initialization should preserve the [`teach`](../skills/foundations/teach/SKILL.md)-style progression model: mission first, resources before memory, records for non-obvious lessons, notes for preferences and small units with feedback.
+
+Once the seam and state model are stable, scaffold fixed project workflows as
+script-backed skills. Keep architectural judgment in reasoning skills; move
+repeatable registry queries, state transitions, fixture orchestration and report
+validation into tested code so later sessions consume schemas instead of prompt
+mechanics. Select `prompt` or `scaffold` per role, keep only the selected variant
+in skill discovery roots, and archive the other outside them. Start a fresh
+agent session after a mode switch.
+
+## Switch Project Skill Modes
+
+A new role starts in `prompt` mode. Before switching, both variants use the same
+skill name, contain a correct `.py2rs-skill-variant.json`, and point
+`validation_evidence` to a real validation file inside each variant. This
+example uses Claude project paths; Codex users set `PY2RS_RUNTIME` and the
+active/discovery paths to their `.codex` equivalents.
+
+Dry-run from the project root and list every discovery root actually used by
+the project:
+
+```bash
+PY2RS_RUNTIME="${PY2RS_RUNTIME:-$HOME/.claude/skills/py2rs-runtime}"
+switcher="$PY2RS_RUNTIME/scripts/switch_skill_mode.py"
+
+python "$switcher" \
+  --role dependency-bootstrap \
+  --current-mode prompt \
+  --target-mode scaffold \
+  --active .claude/skills/project-dependency-bootstrap \
+  --archive-root .py2rs/skill-archive \
+  --discovery-root .claude/skills \
+  --discovery-root .codex/skills
+```
+
+After the output reports `ready`, rerun the same arguments with `--apply`. The
+script moves the variants and leaves a `switched_pending_notes` journal. Apply
+the returned `notes_update` to `NOTES.md` immediately, then acknowledge the
+durable state:
+
+```bash
+python "$switcher" \
+  --role dependency-bootstrap \
+  --archive-root .py2rs/skill-archive \
+  --ack-notes
+```
+
+Start a fresh session only after `notes_acknowledged`. If the script reports
+`manual_recovery_required`, preserve the journal and recover from its recorded
+paths and phase; do not overwrite the active path with another copy. See
+[Architecture](architecture.md#mode-lifecycle) for the full invariants.
 
 ## Work One Unit
 
 1. Select one migration unit from the manifest.
-2. Apply the `NOTES.md` rewrite preferences during dependency alignment if the unit touches third-party behavior, native code, broad package APIs, fixtures or unclear rollback.
-3. Add or identify behavior fixtures.
-4. Implement behind the accepted seam.
-5. Mark the unit `reimplemented`, not `verified`.
-6. Run R0 behavior review.
-7. Run additional review roles required by the manifest.
-8. Promote only after review evidence exists.
+2. Satisfy the `NOTES.md` crate reconnaissance mode: fresh agent report, manual evidence, or an acknowledged disabled warning.
+3. Apply the report/status and rewrite preferences during dependency alignment.
+4. Add or identify behavior fixtures.
+5. Implement behind the accepted seam.
+6. Mark the unit `reimplemented`, not `verified`.
+7. Run R0 behavior review.
+8. Run additional review roles required by the manifest.
+9. Promote only after review evidence exists.
 
 ## Build Project-Specific Skills First
 
@@ -65,6 +119,8 @@ Good project skills encode:
 - source-of-truth docs
 - manifest location and state model
 - rewrite-depth and framework preference profile
+- crate reconnaissance and registry proxy policy
+- per-role `prompt`/`scaffold` selection and off-discovery archive location
 - dependency expansion policy
 - writer workflow
 - review roles

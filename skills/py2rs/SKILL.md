@@ -1,6 +1,6 @@
 ---
 name: "py2rs"
-description: "Python-to-Rust 渐进式重写总 skill。用于规划、实施或审查系统级重写：先读取项目事实与架构 seam，再校准迁移粒度、重写力度和依赖/框架偏好，选择或重切迁移单元、manifest/manifest shards、能力覆盖、回滚路径和独立质量门；适用于纯 Python 脚本迁移，也适用于借鉴 py2rs 纪律但保留项目自身架构的重写。"
+description: "Python-to-Rust 渐进式重写总 skill。用于规划、实施或审查系统级重写：读取项目事实与架构 seam，校准迁移粒度、重写力度和依赖偏好，通过可选的独立 crate 侦察、能力对齐、manifest、回滚路径和质量门逐步替换旧实现。"
 ---
 
 # py2rs — 渐进式重写与现代化纪律
@@ -155,14 +155,15 @@ Only use `py/`, `rs/`, and `runtime/router.py` when they fit the project. If the
 2. Calibrate or read the user's rewrite preferences and granularity profile.
 3. Define the migration unit and public interface policy.
 4. Define current owner, target owner, rollback route and required reviews.
-5. Align and lock the selected unit's dependencies when its capability coverage requires them.
-6. Add or identify behavior tests before implementation when practical.
-7. Implement behind the chosen seam.
-8. Mark new implementation as `reimplemented`, not `verified`.
-9. Run R0 behavior review first.
-10. Run additional review gates as separate roles.
-11. Promote only after required reviews pass and rollback remains clear.
-12. Record reusable lessons in rewrite records.
+5. Satisfy the recorded crate reconnaissance mode before dependency alignment.
+6. Align and lock the selected unit's dependencies when its capability coverage requires them.
+7. Add or identify behavior tests before implementation when practical.
+8. Implement behind the chosen seam.
+9. Mark new implementation as `reimplemented`, not `verified`.
+10. Run R0 behavior review first.
+11. Run additional review gates as separate roles.
+12. Promote only after required reviews pass and rollback remains clear.
+13. Record reusable lessons in rewrite records.
 
 ## Manifest Model
 
@@ -176,6 +177,10 @@ units:
     current_owner: legacy
     target_owner: rust
     public_interface_policy: "Preserve existing CLI/API/command/event/payload behavior."
+    dependency_recon:
+      mode: agent # agent | manual | disabled
+      status: pending
+      report: null
     required_reviews:
       - behavior_reviewer
       - error_tracing_reviewer
@@ -263,6 +268,12 @@ Dependencies are aligned by capability coverage, not one-to-one package names.
 - Read the rewrite preferences in `NOTES.md` before comparing Rust candidates.
   Treat them as a search constraint, not as a substitute for project facts or
   behavior fixtures.
+- Read `crate_reconnaissance.mode` before dependency alignment. `agent` requires
+  a fresh-context `py2rs-crate-recon` report; `manual` requires user-supplied
+  candidate and dependency-path evidence; `disabled` requires a stored warning
+  acknowledgement and remains visible as `user_disabled`.
+- A high-level crate cannot be rejected before its relevant features and
+  dependency paths are checked, unless reconnaissance is explicitly disabled.
 - Stage 0 should identify the bridge/seam and dependencies required for behavior parity.
 - Python dependency packages may be much broader than the selected migration
   unit. It is valid for Rust crates to cover a large lower layer while a small
@@ -321,7 +332,9 @@ Dependencies are aligned by capability coverage, not one-to-one package names.
 
 ## Sub-Skill Routing
 
-- `py2rs-dep-align`: decide capability coverage and bridge/seam dependencies.
+- `py2rs-crate-recon`: search crates.io and trace feature/dependency paths in a
+  fresh context before dependency alignment.
+- `py2rs-dep-align`: consume reconnaissance evidence and decide capability coverage and seam dependencies.
 - `py2rs-env-bootstrap`: prove the chosen seam works before business migration.
 - `py2rs-runtime`: capture rewrite preferences, define manifest/control-plane and optional routing adapters.
 - `py2rs-review-r0-behavior`: independent behavior parity gate.
