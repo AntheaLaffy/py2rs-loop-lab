@@ -1,6 +1,6 @@
 ---
 name: "py2rs-dep-align"
-description: "[DRAFT] 对齐渐进式 Python/Rust 或 legacy/Rust 重写所需依赖。重点是能力覆盖、依赖源码展开、crate 复用/adapter/窄手写补齐、manifest 重切、项目 seam、验证命令和桥接方式，而不是强制 pyo3/maturin 或一对一库替换。"
+description: "[DRAFT] 按项目在 NOTES.md 中记录的重写力度和框架偏好，对齐渐进式 Python/Rust 或 legacy/Rust 重写所需依赖。覆盖依赖源码展开、crate 复用/adapter/手写补齐、manifest 重切、项目 seam、验证命令和桥接方式。"
 ---
 
 # py2rs-dep-align — 依赖与能力对齐
@@ -13,8 +13,37 @@ Stage 0 的目标是证明迁移有可行的能力覆盖和集成路径。先对
 
 - 项目依赖清单：`requirements.txt`、`pyproject.toml`、`Cargo.toml`、lockfile、package manifests。
 - 项目事实：mission、architecture、manifest、resources、records。
+- `NOTES.md` 中的 `rewrite_preferences`；缺失时使用 `standard` 并记录这是默认假设。
 - 目标迁移单元的公共接口和验证方式。
 - 已有第三方源码快照、vendored sources、native sources、source audit 或等价记录。
+
+## Apply Rewrite Preferences
+
+Rewrite preferences constrain the candidate search; they do not replace public
+behavior evidence, project architecture, or dependency source analysis.
+
+- `standard`: use the capability ladder below. Prefer maintained crates or
+  crate plus adapter, while allowing a full hand-written path when recorded
+  evidence shows it is smaller, safer, or easier to roll back.
+- `ecosystem_first`: maximize maintained crate coverage and limit hand-written
+  code to project semantics and compatibility gaps.
+- `handwritten_first`: start from a fixture-backed hand-written domain path;
+  reuse general infrastructure and use a domain crate only when the dependency
+  record explains why hand-writing would violate the user's actual goal.
+- `domain_from_scratch`: reject crates that own the selected domain algorithms,
+  domain data structures, or Python-visible domain semantics. General
+  infrastructure remains allowed unless separately constrained.
+- `custom`: apply the capability-specific rules recorded in `NOTES.md`.
+
+For each relevant framework preference, honor `prefer` when project evidence
+does not favor another path. Never silently violate `require` or `avoid`. If a
+hard preference conflicts with public behavior, licensing, security, build,
+portability, or an existing accepted architecture, stop and get a user decision
+before changing the preference.
+
+Do not treat example crate names in py2rs documentation as a current catalog.
+Inspect existing project choices and verify maintained candidates against
+current official sources before selecting a new framework.
 
 ## Capability Coverage
 
@@ -25,27 +54,32 @@ Stage 0 的目标是证明迁移有可行的能力覆盖和集成路径。先对
   tokenizer、parser、event stream、IO、Unicode table、numeric primitive、
   data structure 等较低层能力，就可以复用该层，再用小 adapter 补齐 Python
   包的 public behavior。
-- 不追求依赖一一对应。优先级是：
+- 不追求依赖一一对应。`standard` 的优先级是：
   1. fixture 证明直接 crate 覆盖；
   2. crate 覆盖稳定下层能力，Python 源码解释语义差异，Rust adapter 补齐；
   3. 仅对语义差异或 crate 不能安全负责的窄能力手写 Rust。
-- 引入依赖和造轮子不是互斥选项。依赖审查优化的是“最小、可验证、可回滚的
+- 在 rewrite preferences 允许 crate reuse 时，引入依赖和造轮子不是互斥选项。
+  依赖审查优化的是“最小、可验证、可回滚的
   能力组合”，不是依赖数量最少。成熟 crate 能安全负责的底层能力应优先复用，
   手写代码负责 Python 兼容层、语义 delta、错误投影、构造器差异、格式化差异
   或其它被 fixtures 锁住的小范围行为。
-- 审查时同时反对两个极端：为了包名一致而强行找 drop-in replacement；以及
-  因为 crate 不能完美匹配 Python 包就退回几乎全手写。
+- 在 `standard` 或 `ecosystem_first` 下，审查时同时反对两个极端：为了包名一致
+  而强行找 drop-in replacement；以及因为 crate 不能完美匹配 Python 包就退回
+  几乎全手写。不要把这条规则用于推翻用户选择的 hand-written profile。
 - 必要时全量造轮子也是可行方案。判断标准不是“有没有依赖”，而是哪条路径
   更小、更可验证、更可维护、更容易回滚。可接受理由包括：crate 语义偏差过大、
   crate 不稳定或维护不足、许可/安全/构建/运行时/跨平台约束不可接受、集成成本
   高于收益，或 selected capability 很窄导致引入 crate 的 surface 大于收益。
-  这种决定必须写成 tradeoff，并绑定参考源码与 fixtures。
+  在 `standard` 或 `ecosystem_first` 下，这种决定必须写成 tradeoff，并绑定参考
+  源码与 fixtures；hand-written profiles 仍然必须绑定 fixtures 和参考源码，但
+  不需要重新论证用户已经确认的总体重写方向。
 - Python 侧依赖很大时，不要因为 Rust 侧 crate 覆盖了“大量无关内容”而拒绝
   它；只要 selected unit 只暴露一小片能力，并且 adapter/fixtures 把行为锁住，
   这种覆盖是可接受的。
 - 若直接 crate 替换比选定单元更宽、更不稳定或更难验证，允许手写一个窄 Rust
-  replacement。手写必须绑定参考源码和 fixtures，不能凭记忆重造行为；但它不是
-  默认优先级，不能取代本可由成熟 crate 安全负责的通用底层能力。
+  replacement。手写必须绑定参考源码和 fixtures，不能凭记忆重造行为；在
+  `standard` 下它不是默认优先级。无论 profile 如何，通用基础设施与领域能力
+  都必须分开判断。
 - Python `re` 若使用 lookaround/backtracking 特性，Rust 侧考虑 `fancy-regex`。
 - pandas/numpy 类能力可能由 `polars`、`arrow`、`ndarray` 或保留 Python owner 覆盖。
 - GUI/web/front-end 构建链不是 py2rs 迁移对象，除非该项目的迁移单元明确包含它。
@@ -166,7 +200,10 @@ Do not install bridge dependencies that the chosen seam does not need.
 
 ## Dependency Locking
 
-- During Stage 0, identify and lock dependencies required for behavior parity.
+- Repository initialization records preferences only; it must not add speculative
+  crates or change a lockfile.
+- When a seam or selected migration unit enters Stage 0, identify, add and lock
+  the dependencies required for its behavior parity.
 - During implementation and R0, avoid dependency churn. Missing essentials mean Stage 0 was incomplete.
 - During R1-R6, new dependencies are allowed only for the review objective and must preserve R0 behavior.
 - Prefer Rust Edition 2024 for new Rust crates unless the project constrains toolchain/FFI.
@@ -189,6 +226,16 @@ seam:
   bridge_dependencies:
     - name: serde_json
       reason: "stable subprocess protocol"
+
+preference_application:
+  source: "NOTES.md#py2rs-rewrite-preferences"
+  profile: standard
+  framework_preferences:
+    async_runtime:
+      selection: tokio
+      strength: prefer
+      decision: use
+  deviations: []
 
 rust:
   edition: "2024"
@@ -260,6 +307,9 @@ verification:
 ## Checks
 
 - Toolchains are available (`python`, `cargo`, project build tools).
+- The dependency record names the rewrite preference source and applied profile.
+- Every preference deviation has a reason; no `require` or `avoid` rule is
+  violated without a new user decision.
 - The chosen seam dependencies are present.
 - Behavior fixture/test dependencies are present.
 - The dependency record explains any legacy-owned capability.
@@ -273,9 +323,11 @@ verification:
   correctness.
 - The dependency record does not treat fewer Rust dependencies as a success
   metric.
-- The review challenges unnecessary full hand-written rewrites when a crate can
-  safely own a stable lower layer.
-- Full hand-written replacements include a recorded tradeoff explaining why
-  crate reuse plus adapter is worse for this unit.
+- Under `standard` or `ecosystem_first`, the review challenges unnecessary full
+  hand-written rewrites when a crate can safely own a stable lower layer.
+- Under a hand-written profile, domain crate reuse is rejected or explicitly
+  reconciled with the recorded user preference.
+- Full hand-written replacements under `standard` or `ecosystem_first` include a
+  tradeoff explaining why crate reuse plus adapter is worse for this unit.
 - The manifest is re-cut before writer work if the current unit is too broad.
 - The next skill can bootstrap the seam without guessing.

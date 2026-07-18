@@ -1,6 +1,6 @@
 ---
 name: "py2rs-runtime"
-description: "[DRAFT] 建立 py2rs 的迁移控制面：manifest 或 manifest shards、迁移单元粒度配置、状态机、路由/adapter 协议、回滚路径和审计记录。Python router/FFI bridge 只是可选实现，适用于 Python 主进程仍然编排系统的项目。"
+description: "[DRAFT] 初始化 py2rs 重写偏好并建立迁移控制面：在 NOTES.md 记录依赖重写力度和框架偏好，维护 manifest 或 manifest shards、迁移粒度、状态机、路由/adapter、回滚和审计。Python router/FFI bridge 只是可选实现。"
 ---
 
 # py2rs-runtime — 迁移控制面与可选路由层
@@ -11,9 +11,10 @@ description: "[DRAFT] 建立 py2rs 的迁移控制面：manifest 或 manifest sh
 
 1. 读取项目事实：mission、architecture、resources、notes、manifest、records、tests 或等价文件。
 2. 确认项目已有 seam。如果已有稳定 facade/adapter/command/API boundary，优先沿用。
-3. 初始化仓库或重切 manifest 前，询问或读取用户的 granularity profile。
-4. 只有在 Python 进程仍是统一入口时，才创建 Python runtime router。
-5. 若项目已有控制面，扩展它；不要另起一个与项目冲突的 py2rs manifest。
+3. 初始化仓库时，询问或读取用户的 rewrite preferences，并把偏好写入 `NOTES.md`。
+4. 初始化仓库或重切 manifest 前，询问或读取用户的 granularity profile。
+5. 只有在 Python 进程仍是统一入口时，才创建 Python runtime router。
+6. 若项目已有控制面，扩展它；不要另起一个与项目冲突的 py2rs manifest。
 
 ## Runtime Means Control Plane
 
@@ -116,6 +117,27 @@ If the user has not chosen, start with `balanced` and explicitly mark it as an
 assumption. Revisit the profile when R0 failures cluster, when review overhead
 exceeds implementation work, or when dependency expansion reveals better unit
 boundaries.
+
+## Rewrite Preferences
+
+Repository initialization must capture how strongly the user wants to reuse
+Rust ecosystem dependencies, which domain capabilities should be hand-written,
+and whether the user already prefers a framework for relevant capability
+categories. This preference profile is durable user context, not migration
+state: keep its single source of truth in `NOTES.md`, while the granularity
+profile remains in the manifest/control plane.
+
+When initializing a repository or when the user asks to revise these choices,
+read [rewrite-preferences.md](references/rewrite-preferences.md) completely and
+follow its two-stage interview and schema. Detect the project's capability
+categories first and ask only about relevant choices. If the user does not know
+or does not want to customize, record the `standard` default instead of forcing
+more questions.
+
+Do not add crates or change a lockfile while capturing preferences. The profile
+is complete when every detected, architecture-significant category has either
+an explicit selection or `auto`, the source and strength are recorded, and the
+fenced YAML block in `NOTES.md` is internally consistent.
 
 ## Manifest Shards
 
@@ -245,6 +267,8 @@ The bridge must preserve public behavior and error semantics until a migration u
 ## Required Deliverables
 
 - A manifest/control-plane file or confirmed reuse of the project manifest.
+- A rewrite preference profile in `NOTES.md`, using `standard` defaults where
+  the user declined customization.
 - A recorded granularity profile, or an explicit assumption that `balanced` is
   being used until the user decides.
 - For large parallel rewrites, either a root manifest with shard manifests or an
@@ -262,6 +286,8 @@ The bridge must preserve public behavior and error semantics until a migration u
 - The manifest names verification commands or fixtures.
 - The runtime/control plane has no business logic.
 - Unit sizes and review requirements match the recorded granularity profile.
+- Rewrite preferences live in `NOTES.md`; repository initialization has not
+  introduced speculative Cargo dependencies.
 - For sharded manifests, shard boundaries, dependencies and cross-shard contracts
   are explicit enough for separate Codex sessions to work without editing the
   same control-plane scope.

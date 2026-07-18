@@ -9,7 +9,8 @@ description: "[DRAFT] 跑通迁移 seam 的最小环境。根据项目选择 FFI
 
 ## Pick The Seam
 
-从 `py2rs-dep-align` 的记录读取 seam 类型：
+从 `py2rs-dep-align` 的记录读取 seam 类型、applied rewrite profile、实际依赖和
+preference deviations。偏好采集本身不能代替这份单元级依赖记录。
 
 - `ffi`: Python 调 Rust extension。
 - `cli`: legacy caller 调 Rust binary 或反向包装。
@@ -55,6 +56,8 @@ Record results in the manifest or a Stage 0 file:
 env_bootstrap:
   status: done
   seam: tauri-command
+  dependency_record: "rewrite-records/example-dependencies.yaml"
+  applied_profile: standard
   cases:
     roundtrip: PASS
     error_mapping: PASS
@@ -68,6 +71,10 @@ env_bootstrap:
 ## Failure Handling
 
 - Missing dependency: return to `py2rs-dep-align`.
+- Cargo manifest/lockfile does not match the applied dependency record: return
+  to `py2rs-dep-align`; do not silently add a different framework here.
+- A hard framework preference is incompatible with the seam: return to the user
+  for a preference decision, then update `NOTES.md` and the dependency record.
 - Bad error mapping: fix the bridge/adapter before business migration.
 - Deadlock/blocking behavior: define async boundary before business migration.
 - Rollback cannot be shown: the seam is not ready.
@@ -75,5 +82,7 @@ env_bootstrap:
 ## Exit Criteria
 
 - The seam works without business rewrite code.
+- Cargo manifests and lockfiles contain the dependencies selected for this seam,
+  with no dependency added solely because it appeared in initialization notes.
 - The demo uses the project's actual public interface shape where possible.
 - The next migration unit can implement behind the seam without choosing new architecture.

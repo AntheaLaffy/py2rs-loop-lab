@@ -34,17 +34,20 @@ Add R1-R6 review skills according to risk.
 1. Read project truth: mission, architecture, resources, manifest, records and tests.
 2. Identify the accepted seam: CLI, service facade, Tauri command facade, Python module, library API, pipeline stage or another project-specific boundary.
 3. Write or adapt project-specific skills for coordination, dependency bootstrap, writer work and review gates.
-4. Ask the user for the granularity profile.
-5. Create or reuse a manifest/control plane.
-6. Snapshot first-layer direct Python dependency sources when storage, license and policy allow it.
-7. Define rollback routes before implementation.
+4. Ask for the overall rewrite strategy, then ask only about framework categories detected in the project. Store the result in `NOTES.md`; use `standard` when the user declines customization.
+5. Ask the user for the granularity profile.
+6. Create or reuse a manifest/control plane.
+7. Snapshot first-layer direct Python dependency sources when storage, license and policy allow it.
+8. Define rollback routes before implementation.
+
+Preference capture does not add crates or change a lockfile. Dependencies are added and locked when a seam or selected migration unit reaches dependency alignment.
 
 The initialization should preserve the [`teach`](../skills/foundations/teach/SKILL.md)-style progression model: mission first, resources before memory, records for non-obvious lessons, notes for preferences and small units with feedback.
 
 ## Work One Unit
 
 1. Select one migration unit from the manifest.
-2. Run dependency alignment if the unit touches third-party behavior, native code, broad package APIs, fixtures or unclear rollback.
+2. Apply the `NOTES.md` rewrite preferences during dependency alignment if the unit touches third-party behavior, native code, broad package APIs, fixtures or unclear rollback.
 3. Add or identify behavior fixtures.
 4. Implement behind the accepted seam.
 5. Mark the unit `reimplemented`, not `verified`.
@@ -61,6 +64,7 @@ Good project skills encode:
 - accepted architecture seam
 - source-of-truth docs
 - manifest location and state model
+- rewrite-depth and framework preference profile
 - dependency expansion policy
 - writer workflow
 - review roles

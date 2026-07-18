@@ -46,6 +46,20 @@ Available vocabulary:
 
 Finer units cost more review rounds and tokens. They also reduce hallucination risk, dead-code risk and behavioral drift.
 
+## Rewrite Preferences
+
+Repository initialization uses a separate preference profile to record how strongly the user wants to reuse Rust ecosystem dependencies and which relevant frameworks they prefer. It lives in `NOTES.md`, not in the manifest:
+
+- `standard`: default capability-first tradeoff between maintained crates, adapters and fixture-backed hand-written code
+- `ecosystem_first`: maximize maintained crate reuse
+- `handwritten_first`: prefer hand-written project/domain behavior while allowing general infrastructure
+- `domain_from_scratch`: rebuild the domain stack bottom-up while still allowing `std`, async runtimes, serialization, diagnostics, tracing, transport and build tooling
+- `custom`: capability-specific rules
+
+After the overall strategy, ask only about framework categories detected in the project, such as async, errors/tracing, numeric/ML, Web, UI or persistence. Candidate names in the skills are examples; actual choices must respect the current project and current official sources.
+
+Initialization records these choices but does not add crates or modify a lockfile. Dependency alignment applies the profile when a seam or migration unit needs the capability. Hard `require` and `avoid` preferences cannot be silently overridden.
+
 ## Dependency Alignment
 
 Dependencies are aligned by capability, not by package name.
@@ -57,7 +71,7 @@ Allowed paths:
 - narrow hand-written replacement for semantic gaps
 - full hand-written replacement when it is smaller, safer or easier to verify than crate reuse plus adapter
 
-Fewer Rust dependencies is not a success metric. Full wheel rebuilding is not a default preference either. The selected path must be recorded as a tradeoff.
+Fewer Rust dependencies is not a success metric. Under `standard`, full wheel rebuilding is not the default either. The selected path must follow the recorded rewrite profile, and each unit records how the preference was applied or why it was changed.
 
 ## Source Expansion
 

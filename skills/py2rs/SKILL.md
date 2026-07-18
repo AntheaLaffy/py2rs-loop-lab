@@ -1,6 +1,6 @@
 ---
 name: "py2rs"
-description: "Python->Rust 渐进式重写总 skill。用于规划、实施或审查系统级重写：先读取项目事实与架构 seam，再和用户校准迁移单元粒度、选择或重切迁移单元、manifest/manifest shards、依赖能力覆盖、回滚路径和独立质量门；适用于纯 Python 脚本迁移，也适用于借鉴 py2rs 纪律但保留项目自身架构的重写。"
+description: "Python-to-Rust 渐进式重写总 skill。用于规划、实施或审查系统级重写：先读取项目事实与架构 seam，再校准迁移粒度、重写力度和依赖/框架偏好，选择或重切迁移单元、manifest/manifest shards、能力覆盖、回滚路径和独立质量门；适用于纯 Python 脚本迁移，也适用于借鉴 py2rs 纪律但保留项目自身架构的重写。"
 ---
 
 # py2rs — 渐进式重写与现代化纪律
@@ -66,6 +66,18 @@ If the user does not choose, default to `balanced`: small enough for independent
 fixtures and rollback, but not so small that every helper creates a separate
 review cycle. Revisit the profile after dependency expansion, after the first
 failed R0 review, or when review cost dominates implementation cost.
+
+## Rewrite Preference Calibration
+
+初始化重写仓库时，还要询问或读取项目的 rewrite preferences。它与 granularity
+不同：granularity 决定迁移单元和审核要切多细；rewrite preferences 决定项目
+倾向复用 Rust 生态、手写兼容层，还是从底层重写领域能力，以及各能力类别的
+框架偏好。
+
+由 `py2rs-runtime` 负责两阶段采集并写入 `NOTES.md`。用户不知道或不想定制时，
+使用当前 capability-first 的 `standard` 策略。初始化只记录偏好，不预先修改
+`Cargo.toml` 或 lockfile；进入相关迁移单元后，`py2rs-dep-align` 才应用偏好并
+锁定实际依赖。
 
 ## What py2rs Borrows From Other Skills
 
@@ -140,16 +152,17 @@ Only use `py/`, `rs/`, and `runtime/router.py` when they fit the project. If the
 ## Standard Flow
 
 1. Ground in project truth: read source-of-truth docs, current manifest, records, architecture and existing tests.
-2. Calibrate or read the user's granularity profile.
+2. Calibrate or read the user's rewrite preferences and granularity profile.
 3. Define the migration unit and public interface policy.
 4. Define current owner, target owner, rollback route and required reviews.
-5. Add or identify behavior tests before implementation when practical.
-6. Implement behind the chosen seam.
-7. Mark new implementation as `reimplemented`, not `verified`.
-8. Run R0 behavior review first.
-9. Run additional review gates as separate roles.
-10. Promote only after required reviews pass and rollback remains clear.
-11. Record reusable lessons in rewrite records.
+5. Align and lock the selected unit's dependencies when its capability coverage requires them.
+6. Add or identify behavior tests before implementation when practical.
+7. Implement behind the chosen seam.
+8. Mark new implementation as `reimplemented`, not `verified`.
+9. Run R0 behavior review first.
+10. Run additional review gates as separate roles.
+11. Promote only after required reviews pass and rollback remains clear.
+12. Record reusable lessons in rewrite records.
 
 ## Manifest Model
 
@@ -247,28 +260,35 @@ Behavior review is always first. Other roles depend on the migration unit.
 
 Dependencies are aligned by capability coverage, not one-to-one package names.
 
+- Read the rewrite preferences in `NOTES.md` before comparing Rust candidates.
+  Treat them as a search constraint, not as a substitute for project facts or
+  behavior fixtures.
 - Stage 0 should identify the bridge/seam and dependencies required for behavior parity.
 - Python dependency packages may be much broader than the selected migration
   unit. It is valid for Rust crates to cover a large lower layer while a small
   compatibility adapter or hand-written Rust fills only the observed Python
   semantic gaps.
-- Do not require perfect package parity. Prefer this ladder:
+- Do not require perfect package parity. Under `standard`, prefer this ladder:
   1. direct crate coverage when fixtures prove behavior;
   2. partial crate reuse plus a fixture-bound compatibility adapter when the
      Python source explains the semantic delta;
   3. narrow hand-written Rust for semantic gaps or capabilities the crate
      cannot safely own.
-- This ladder is not a preference for fewer dependencies or full wheel
+- This `standard` ladder is not a preference for fewer dependencies or full wheel
   rewriting. Introducing Rust dependencies and writing small compatibility code
-  are complementary. A dependency review should challenge unnecessary
-  hand-written reimplementation when a maintained crate can safely own a stable
-  lower layer behind fixtures.
-- Full hand-written replacement is still valid when it is the smaller or safer
-  verified path. Common reasons include unacceptable semantic mismatch, unstable
-  or unmaintained crates, licensing/security/build/runtime constraints,
+  are complementary. Under `standard` or `ecosystem_first`, a dependency review
+  should challenge unnecessary hand-written reimplementation when a maintained
+  crate can safely own a stable lower layer behind fixtures.
+- Under `standard`, full hand-written replacement is still valid when it is the
+  smaller or safer verified path. Common reasons include unacceptable semantic
+  mismatch, unstable or unmaintained crates, licensing/security/build/runtime
+  constraints,
   portability problems, excessive integration cost, or a selected capability so
   narrow that a crate would add more surface than it removes. Record this as a
   tradeoff, not as a default preference.
+- Under `handwritten_first` or `domain_from_scratch`, follow the recorded domain
+  boundary instead of reapplying the standard ladder. Hand-written behavior must
+  still be grounded in reference sources and fixtures.
 - When dependency behavior matters, expand or snapshot the relevant Python,
   native or Rust-backed dependency source into a project-controlled reference
   location, with version, origin and license recorded. Use it to understand
@@ -285,6 +305,9 @@ Dependencies are aligned by capability coverage, not one-to-one package names.
   capabilities, or hides a better seam.
 - During implementation and R0, avoid unplanned dependency churn. Missing essentials mean Stage 0 was incomplete.
 - During later quality reviews, new dependencies are allowed when they serve a review objective and R0 behavior still passes.
+- Repository initialization records framework choices but does not add speculative
+  dependencies. Add and lock a crate only when a seam or selected migration unit
+  needs its capability.
 - Rust Edition 2024 is preferred for new Rust crates unless the project toolchain or FFI choice prevents it.
 
 ## Non-Negotiables
@@ -300,7 +323,7 @@ Dependencies are aligned by capability coverage, not one-to-one package names.
 
 - `py2rs-dep-align`: decide capability coverage and bridge/seam dependencies.
 - `py2rs-env-bootstrap`: prove the chosen seam works before business migration.
-- `py2rs-runtime`: define manifest/control-plane and optional routing adapters.
+- `py2rs-runtime`: capture rewrite preferences, define manifest/control-plane and optional routing adapters.
 - `py2rs-review-r0-behavior`: independent behavior parity gate.
 - `py2rs-review-r1-rust-style`: Rust structure and maintainability.
 - `py2rs-review-r2-error-tracing`: error semantics, tracing and diagnosability.

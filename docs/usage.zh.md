@@ -34,17 +34,20 @@
 1. 读取项目事实：mission、architecture、resources、manifest、records 和 tests。
 2. 识别接受的 seam：CLI、service facade、Tauri command facade、Python module、library API、pipeline stage 或其它项目专属边界。
 3. 为 coordination、dependency bootstrap、writer work 和 review gates 编写或改造项目专属 skills。
-4. 询问用户 granularity profile。
-5. 创建或复用 manifest/control plane。
-6. 在存储、license 和项目政策允许时，snapshot 第一层直接 Python 依赖源码。
-7. 在实现前定义回滚路径。
+4. 先询问总体重写策略，再只询问项目检测到的框架类别，并把结果写入 `NOTES.md`；用户不定制时使用 `standard`。
+5. 询问用户 granularity profile。
+6. 创建或复用 manifest/control plane。
+7. 在存储、license 和项目政策允许时，snapshot 第一层直接 Python 依赖源码。
+8. 在实现前定义回滚路径。
+
+采集偏好时不添加 crate，也不修改 lockfile。只有 seam 或选定迁移单元进入依赖对齐后，才真正加入和锁定依赖。
 
 初始化时应该保留 [`teach`](../skills/foundations/teach/SKILL.md) 式渐进模型：mission first、resources before memory、records 记录非显然经验、notes 保存偏好、小单元配合反馈循环。
 
 ## 推进一个单元
 
 1. 从 manifest 选择一个迁移单元。
-2. 如果单元触及第三方行为、native code、宽泛 package API、fixtures 或不清楚的 rollback，先做依赖对齐。
+2. 如果单元触及第三方行为、native code、宽泛 package API、fixtures 或不清楚的 rollback，先在依赖对齐中应用 `NOTES.md` 的重写偏好。
 3. 添加或识别 behavior fixtures。
 4. 在接受的 seam 后实现。
 5. 把单元标为 `reimplemented`，不是 `verified`。
@@ -61,6 +64,7 @@
 - 接受的架构 seam。
 - source-of-truth docs。
 - manifest 位置和状态模型。
+- 重写力度和框架偏好画像。
 - 依赖展开策略。
 - writer workflow。
 - review roles。

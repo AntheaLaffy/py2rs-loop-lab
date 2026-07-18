@@ -15,7 +15,7 @@ If you want open-ended creative exploration, this is the wrong tool. This projec
 1. Start with a real project repository.
 2. Ask AI to study this repository's ideas and architecture.
 3. Have AI design project-specific skills for that repository: coordinator, dependency/bootstrap, writer and review gates.
-4. Initialize the rewrite workspace: mission, resources, notes, records, manifest, dependency source policy and granularity profile.
+4. Initialize the rewrite workspace: mission, resources, notes, records, manifest, rewrite/framework preferences, dependency source policy and granularity profile.
 5. Enter the loop: align dependencies, implement one unit, run R0, then add R1-R6 gates as needed.
 
 The core output is not Rust code. The core output is a project-specific loop that can keep producing reviewed Rust code.
@@ -26,14 +26,20 @@ py2rs does not rely on one long prompt to finish a migration. It turns the migra
 
 - `mission`: records why the rewrite exists, what success means and which behaviors or constraints must not be lost
 - `resources`: stores source-of-truth docs, existing tests, dependency source snapshots, protocol notes and trusted references so AI does not rewrite from memory
-- `notes`: captures user preferences, project constraints, temporary observations and information not yet promoted into rules
+- `notes`: captures user preferences, including the rewrite-depth and framework profile, plus project constraints and temporary observations
 - `records`: preserves non-obvious decisions, lessons, behavior differences, dependency tradeoffs and review conclusions for later sessions
 - `manifest` / checklist: records each migration unit's state, owner, target owner, verification commands, rollback route and required review gates; this is the rewrite control plane
-- dependency alignment: maps Python dependencies, Rust crates, compatibility adapters and hand-written replacements by capability coverage instead of translating package names one-to-one
+- dependency alignment: applies the recorded rewrite/framework preferences while mapping Python dependencies, Rust crates, compatibility adapters and hand-written replacements by capability coverage
 - bootstrap: proves the chosen seam handles parameters, return values, errors, logs, tests and rollback before business logic is migrated
 - review evidence: moves a unit from "reimplemented" toward "verified" or "promoted" only after R0 behavior parity and any required R1-R6 reviews
 
 The point of this architecture is that the system stays runnable, testable and rollbackable at every migration state. Even if a new AI session takes over, it can continue from the repository's mission, records, manifest and reviews instead of guessing project state.
+
+### Rewrite Preferences And Dependency Timing
+
+The initialization architecture separates user intent from migration state. A two-stage interview first records the overall rewrite strategy, then asks only about framework categories detected in the project. These durable choices live in `NOTES.md`; migration ownership, verification and rollback remain in the manifest.
+
+Initialization does not preinstall speculative crates. When a seam or migration unit enters dependency alignment, py2rs combines the recorded preferences with project facts, behavior fixtures and current dependency evidence, then adds and locks only the dependencies that unit needs. The resulting unit record explains how the preference was applied or why it had to change, and bootstrap verifies the selected stack before business logic moves.
 
 ## What The Rust Output Should Look Like
 
@@ -58,7 +64,7 @@ If you only want to install the skills into Codex first, see [`docs/installation
 ## Core Skills
 
 - [`py2rs`](skills/py2rs/SKILL.md): overall rewrite discipline and routing.
-- [`py2rs-runtime`](skills/py2rs-runtime/SKILL.md): control plane, manifest, state model, shards and granularity.
+- [`py2rs-runtime`](skills/py2rs-runtime/SKILL.md): rewrite preferences, control plane, manifest, state model, shards and granularity.
 - [`py2rs-dep-align`](skills/py2rs-dep-align/SKILL.md): dependency source expansion and capability alignment.
 - [`py2rs-env-bootstrap`](skills/py2rs-env-bootstrap/SKILL.md): seam proof before business migration.
 
