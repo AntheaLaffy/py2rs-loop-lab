@@ -15,19 +15,55 @@ If you want open-ended creative exploration, this is the wrong tool. This projec
 1. Start with a real project repository.
 2. Ask AI to study this repository's ideas and architecture.
 3. Have AI design project-specific skills for that repository: coordinator, dependency/bootstrap, writer and review gates.
-4. Initialize the rewrite workspace: mission, resources, notes, records, manifest, rewrite/framework preferences, dependency source policy and granularity profile.
-5. Enter the loop: research crate capability paths, align dependencies, implement one unit, run R0, then add R1-R6 gates as needed.
+4. Initialize the rewrite workspace: mission, resources, notes, records, manifest, rewrite/framework preferences, verification policy, dependency source policy, granularity, review cadence, manifest partitioning and execution policy.
+5. Enter the loop: research crate capability paths, align dependencies, write one configured review batch, then run R0 and the required R1-R6 gates over it.
 
 The core output is not Rust code. The core output is a project-specific loop that can keep producing reviewed Rust code.
 
 ## Current Architecture
 
-The architecture separates two decisions that are easy to conflate:
+The architecture separates five decisions that are easy to conflate:
 
 - **Dependency and rewrite policy**: initialization records rewrite depth, relevant framework preferences, crate reconnaissance mode and the project's own crates.io proxy in `NOTES.md`. When a capability is actually needed, Context7, registry search and the Cargo graph determine whether to reuse a crate, call a lower backend, add an adapter or hand-write the semantic difference.
+- **Verification target**: `behavior_parity` is the default and uses the legacy Python public seam as its oracle. A deep inference/framework boundary may declare `rust_compatibility` before implementation and target already behavior-verified canonical Rust contracts. This is not an after-the-fact escape from failed parity.
+- **Review budget and cadence**: `review_budget` selects the roles each unit needs; `review_policy.cadence` chooses per-unit review, one aggregate review every N units, or review after the current scope is fully written. The default is a three-unit batch. Promotion always flushes first; risk boundaries do so by default, but the user may choose to follow the overall cadence.
+- **Manifest partitioning and execution mode**: a large manifest may be split into shards to reduce per-session context and expose dependency/rollback boundaries, but sharding does not mean parallel writing. One serial writer is the default. `coordinated_parallel` requires explicit user acceptance of extra token/build/integration cost plus a coordinator for shared dependencies and the Cargo build queue.
 - **Project skill execution mode**: each coordinator, dependency bootstrap, writer or review role independently selects `prompt` or `scaffold`. Use `prompt` while the workflow still needs creative iteration; switch to `scaffold` only after its inputs, outputs and failure paths are stable and validated, so scripts can own deterministic operations.
 
 The two variants may replace each other as the project matures, but exactly one variant per role may remain under agent discovery roots. Archive the counterpart outside those roots, write the new state back to `NOTES.md`, then start a fresh session. This preserves freedom for architectural judgment without spending prompt tokens on mechanics that have already stabilized.
+
+## Why There Seem To Be Many Steps
+
+These mechanisms do not require every migration unit to run every possible
+flow. They trade a small amount of up-front control work for less repeated
+search, context reconstruction and rework. The goal is to save tokens and time
+and increase rewrite throughput while preserving user control, project fit and
+strong behavioral consistency.
+
+| Mechanism | What it saves or protects in this project |
+|---|---|
+| Manifest, records and reviews | A new session reads owners, rollback routes, prior decisions and evidence instead of rescanning the project or relying on chat memory. |
+| Separate granularity and review cadence | Code stays in small testable, rollbackable units while a writer completes several units continuously and three share one review context by default. Fewer role switches increase rewrite throughput; a small project can use `end_of_scope` and review after all writing finishes. |
+| `review_budget` and per-unit verdicts | Low-risk units do not need the full R0-R6 set. Batch reports reuse context while still allowing passing units to advance independently, preserving strong consistency. |
+| Explicit verification oracle | Normal units retain strict Python/Rust parity. If Python and Rust deep-learning tensor semantics reach codecs or model loading and exact parity would require rewriting the whole framework, the chain switches at its entry to compatibility with verified Rust contracts instead of spending effort on the wrong oracle. |
+| Sharded but serial by default | A large inventory can be partitioned by stable capability and traversed in dependency order while one writer reuses loaded project and dependency context. This usually consumes fewer tokens and gives steadier throughput than several Codex windows. |
+| Canonical shared dependencies | Concurrent Cargo builds contend for locks and target artifacts, while shared dependencies may also change `Cargo.toml`/`Cargo.lock`. If Burn lacks a required capability, one hand-written canonical prerequisite is created in the project and reused; agents may not build mutually invisible copies under `/tmp`. |
+| Rewrite preferences and relevant-only framework questions | Initialization records crate-reuse depth and asks only about framework categories the project needs. Later units do not repeat the interview or preinstall speculative dependencies. |
+| Fresh-context crate reconnaissance with compact reports | Registry search, Context7 checks and Cargo dependency paths stay in an isolated context; dependency alignment normally reads only the summary, reducing both prompt load and rework from a poor dependency choice. Users can select manual or disabled mode to control that cost. |
+| `prompt` / `scaffold` modes | Architectural work stays flexible; stable registry queries, state transitions, batch flushing and report validation move into scripts, increasing the speed of repeated migration operations. This repository's `switch_skill_mode.py` uses validation, a lock and a journal so later sessions do not replay those mechanics in prompts. |
+| Project truth, accepted seam and rollback | py2rs does not force one router or directory layout. A Tauri project may keep its command -> backend facade, while a Python-orchestrated project may use a Python router, and the manifest retains a route back to the legacy owner. |
+
+Parallel work remains an exception. A coordinator exclusively owns the root
+manifest, shared dependency registry, shared Cargo files and serialized build
+queue; workers edit only assigned shard paths. Without that layer, agents tend
+to reread the same code, duplicate missing capabilities, and wait on or repeat
+compilation, making the rewrite slower and more token-intensive than serial work.
+
+The objective is not "more process is more rigorous." It is to spend tokens
+where judgment is needed, encode stable mechanics once, let writers progress
+continuously for higher rewrite throughput, let the user control review
+frequency, and preserve consistency with canonical dependencies, R0, per-unit
+evidence and promotion rules. The user also controls the verification oracle.
 
 ## Stateful Incremental Repository Architecture
 
@@ -37,17 +73,18 @@ py2rs does not rely on one long prompt to finish a migration. It turns the migra
 - `resources`: stores source-of-truth docs, existing tests, dependency source snapshots, protocol notes and trusted references so AI does not rewrite from memory
 - `notes`: captures user preferences, including the rewrite-depth and framework profile, plus project constraints and temporary observations
 - `records`: preserves non-obvious decisions, lessons, behavior differences, dependency tradeoffs and review conclusions for later sessions
-- `manifest` / checklist: records each migration unit's state, owner, target owner, verification commands, rollback route and required review gates; this is the rewrite control plane
+- `manifest` / checklist: records each migration unit's state, owner, target owner, verification oracle and commands, rollback route, required review gates, cadence, partitioning and execution policy; this is the rewrite control plane
+- shared dependency registry: records the one project path, owner, consumers and build evidence for shared crates, forks, adapters, generated sources or hand-written capabilities
 - crate reconnaissance: searches by capability, uses Context7 for focused API/feature docs, and follows Cargo dependencies before a high-level crate is rejected or behavior is hand-written
 - dependency alignment: applies the recorded rewrite/framework preferences while mapping Python dependencies, Rust crates, compatibility adapters and hand-written replacements by capability coverage
 - bootstrap: proves the chosen seam handles parameters, return values, errors, logs, tests and rollback before business logic is migrated
-- review evidence: moves a unit from "reimplemented" toward "verified" or "promoted" only after R0 behavior parity and any required R1-R6 reviews
+- review evidence: lets a batch share each role's context while requiring per-unit verdicts; a unit advances only after its selected behavior-parity or Rust-compatibility R0 and required R1-R6 reviews
 
 The point of this architecture is that the system stays runnable, testable and rollbackable at every migration state. Even if a new AI session takes over, it can continue from the repository's mission, records, manifest and reviews instead of guessing project state.
 
 ### Initialization Preferences And Dependency Timing
 
-The initialization architecture separates user intent from migration state. A two-stage interview first records the overall rewrite strategy, then asks only about framework categories detected in the project. It also records whether crate reconnaissance is agent-run, manual or disabled, plus any crates.io proxy. These durable choices live in `NOTES.md`; migration ownership, verification and rollback remain in the manifest.
+The initialization architecture separates user intent from migration state. A two-stage interview records strategy and relevant frameworks, crate reconnaissance/network choices, review cadence, partitioning and execution mode. Execution defaults to serial. Each unit also selects legacy behavior parity or verified-Rust compatibility before implementation. Durable dependency preferences live in `NOTES.md`; verification/review/execution policy, ownership and rollback remain in the manifest.
 
 Initialization does not preinstall speculative crates. Agent reconnaissance runs in a fresh context and gives dependency alignment a compact evidence report; manual mode lets a Rust-ecosystem expert provide the same evidence. Reconnaissance can be disabled to save tokens, but py2rs then warns that the user must understand or manually research crates.io, docs.rs and feature/dependency paths. Only after alignment are required crates added and locked.
 
@@ -55,11 +92,12 @@ See [Architecture](docs/architecture.md#project-skill-scaffolding) for the mode 
 
 ## What The Rust Output Should Look Like
 
-After using these skills to migrate Python to Rust, the first-stage Rust code is not meant to be a line-by-line Python translation, and it is not meant to be maximally elegant or idiomatic Rust immediately. The first target is narrower and more important: a strictly behavior-compatible Rust version backed by broad, complete tests.
+After using these skills to migrate Python to Rust, the first-stage code is not a line-by-line translation or an immediate style exercise. Legacy-facing units target strict behavior parity. At a declared deep-framework boundary, units instead target application compatibility with already verified canonical Rust contracts, backed by complete tests.
 
 The migrated Rust code should prove:
 
-- public behavior matches the original Python version
+- `behavior_parity` units match original Python public behavior
+- `rust_compatibility` units load models/artifacts and preserve tensor, codec and handoff contracts against a verified Rust oracle without claiming Python framework parity
 - edge cases, error paths, fixtures and regressions are covered by tests
 - each migration unit has review evidence instead of relying on code that merely looks correct
 
@@ -76,7 +114,7 @@ If you only want to install the skills into Codex or Claude first, see [`docs/in
 ## Core Skills
 
 - [`py2rs`](skills/py2rs/SKILL.md): overall rewrite discipline and routing.
-- [`py2rs-runtime`](skills/py2rs-runtime/SKILL.md): rewrite preferences, control plane, manifest, state model, shards and granularity.
+- [`py2rs-runtime`](skills/py2rs-runtime/SKILL.md): rewrite preferences, control plane, manifest, state model, shards, granularity and review cadence.
 - [`py2rs-crate-recon`](skills/py2rs-crate-recon/SKILL.md): fresh-context capability search, Context7 documentation checks and Cargo feature/dependency evidence.
 - [`py2rs-dep-align`](skills/py2rs-dep-align/SKILL.md): dependency source expansion and capability alignment.
 - [`py2rs-env-bootstrap`](skills/py2rs-env-bootstrap/SKILL.md): seam proof before business migration.
@@ -84,6 +122,7 @@ If you only want to install the skills into Codex or Claude first, see [`docs/in
 ## Review Gates
 
 - [`R0 behavior`](skills/py2rs-review-r0-behavior/SKILL.md): public behavior parity.
+- [`R0 compatibility`](skills/py2rs-review-r0-compatibility/SKILL.md): application compatibility with verified canonical Rust contracts at deep framework boundaries.
 - [`R1 Rust style`](skills/py2rs-review-r1-rust-style/SKILL.md): Rust structure and maintainability.
 - [`R2 error tracing`](skills/py2rs-review-r2-error-tracing/SKILL.md): errors, logs, context and redaction.
 - [`R3 IO concurrency`](skills/py2rs-review-r3-io-concurrency/SKILL.md): blocking IO, async boundaries and runtime ergonomics.

@@ -45,6 +45,9 @@ Key shape:
 - First-layer direct Python dependencies are useful for high-level wheel rebuilding.
 - Second-layer or deeper dependencies require public-seam call-path evidence.
 - Rust crates and hand-written replacements are complementary.
+- Model manifests may be sharded, but one serial writer is the default; parallel work requires a coordinator for canonical dependencies, shared Cargo files and the build queue.
+- When several models need missing Burn functionality, create one canonical project prerequisite instead of mutually invisible long-lived copies under `/tmp`.
+- Normal legacy-facing units keep Python behavior parity. The deep inference chain may declare `rust_compatibility` at its entry and target already behavior-verified Rust tensor/codec/artifact contracts.
 - Low-level native/compiler/runtime details are ignored unless they affect public behavior, memory/ABI, persistence, security or model/numeric correctness.
 
 This is an example of py2rs applied to a glue-language project with heavy dependency alignment.

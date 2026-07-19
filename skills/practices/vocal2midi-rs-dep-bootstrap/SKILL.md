@@ -1,6 +1,6 @@
 ---
 name: vocal2midi-rs-dep-bootstrap
-description: Expand first-layer Python dependency sources, justify targeted transitive source expansion, and align capability coverage, Rust crate reuse, compatibility adapters, hand-written replacements, fixtures, and seam/bootstrap records for Vocal2Midi. Use before implementation when imports, native/FFI sources, dependency mismatch, fixture strategy, low-level boundary, or manifest re-cut decisions affect a migration unit.
+description: Expand dependency sources and align canonical shared capabilities, Rust crate reuse, adapters, hand-written Burn gaps, fixtures, and bootstrap records for Vocal2Midi. Use before implementation when imports, native/FFI sources, dependency mismatch, shared model prerequisites, temporary dependency copies, Cargo coordination, or manifest re-cut decisions affect a unit.
 ---
 
 # Vocal2Midi Rust Dependency And Bootstrap
@@ -26,6 +26,8 @@ Read these first:
 - `third_party/native_sources/manifest.json`
 - `third_party/source_audit.json`
 - Source refs and verification notes for the selected unit
+- Execution policy, canonical shared dependency registry, and coordinator
+  assignment when those records exist
 
 Completion criterion: every dependency claim is grounded in a file or marked as
 an assumption.
@@ -97,10 +99,36 @@ Decide by capability, not by Python package name.
 - If a planned unit is too broad after expansion, split it. If several units
   share the same required Rust data model or fixture harness, merge or extract a
   prerequisite unit.
+- Burn is useful but does not cover every model capability needed by this
+  rewrite. When multiple model units need the same missing Burn behavior, create
+  one canonical project-controlled hand-written crate/adapter as a prerequisite;
+  do not let each model writer implement a private version.
 - Do not install or add bridge dependencies that the selected seam does not need.
 
 Completion criterion: kept-legacy capabilities and Rust-covered capabilities are
 both named.
+
+## Verification Oracle
+
+Default to Python `behavior_parity`. For deep inference units where framework
+tensor semantics would force an out-of-scope framework rewrite, propose
+`rust_compatibility` before writer work. Name already behavior-verified canonical
+Rust oracle units/reports, required tensor/codec/model-loading contracts, and
+excluded Python framework internals. Do not use the new unit or a failed parity
+test as the oracle or rationale.
+
+## Shared Dependency Coordination
+
+Search the canonical registry before adding crates or writing a dependency gap.
+Record one project path, owner shard, consumers, manifests, fixtures, and build
+evidence for shared implementations. A path under `/tmp` or an agent-private
+workspace is never canonical; promote useful work into `rewrite-in-rust/rust/`
+or another recorded project root before another unit consumes it.
+
+Default to serial execution. In coordinated parallel mode, workers may propose
+dependency changes but only the coordinator updates shared `Cargo.toml`,
+`Cargo.lock`, workspace membership, patch configuration, registry entries, or
+the Cargo build queue.
 
 ## Native And Low-Level Boundary
 
@@ -153,6 +181,8 @@ Write or update:
   teaches a reusable lesson
 - `rewrite-in-rust/manifest.yaml` when dependency discovery confirms, splits,
   merges, replaces, or defers provisional units
+- the project canonical shared dependency registry when a capability has more
+  than one consumer
 
 Use this dependency record shape:
 
@@ -168,6 +198,19 @@ seam:
   kind: library | ffi | cli | service | pipeline
   default_owner: legacy
   bridge_dependencies: []
+canonical_dependency:
+  registry: "rewrite-in-rust/shared-dependencies.yaml"
+  reuse: []
+  requested_changes: []
+  temporary_sources: disposable_only
+verification_policy:
+  mode: behavior_parity # behavior_parity | rust_compatibility
+  oracle:
+    kind: legacy_public_seam # legacy_public_seam | verified_rust_contract
+    evidence: []
+  required_contracts: []
+  excluded_legacy_internals: []
+  rationale: "Selected before writer work."
 fixtures:
   required:
     - "fixture or golden output needed before writer starts"
@@ -240,3 +283,10 @@ Also check:
 - low-level native/compiler/runtime differences are ignored unless they affect
   the selected public seam or memory/ABI, persistence, security, or model/numeric
   correctness
+- shared Burn gaps and other hand-written dependencies have one canonical path,
+  owner, consumer list and verification record
+- no reusable dependency points to `/tmp` or an agent-private workspace
+- coordinated parallel workers did not modify shared Cargo files or bypass the
+  coordinator's build queue
+- rust_compatibility units name verified canonical Rust evidence and test
+  application-level tensor, codec, artifact and model-loading contracts

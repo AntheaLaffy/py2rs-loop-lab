@@ -39,10 +39,12 @@ py2rs 把这些思想映射到重写工程里：
 - 为什么要重写。
 - 哪个架构 seam 被接受。
 - 哪些公共行为不能变。
+- 哪些单元以 Python behavior parity 为目标，哪些深层边界改用 verified Rust compatibility。
 - 迁移单元切多细。
-- 审核预算和 token 预算。
+- 审核预算、审核频率和 token 预算。
 - 依赖源码展开策略。
 - 复用 crate、写 adapter 或造轮子的取舍。
+- 大清单如何分片，以及默认串行还是显式 coordinated parallel。
 - 哪些项目规则应该沉淀成专属 skills。
 
 AI 在这些约束里工作。
@@ -53,13 +55,14 @@ AI 仍然可以做大量工作：
 
 - 读取项目事实。
 - 提议或重切 manifest 单元。
-- 一次实现一个迁移单元。
+- 默认由一个 writer 按依赖顺序实现单元，即使 manifest 已分片。
 - 添加 fixtures 和 tests。
-- 产出审核报告。
+- 按用户选择的 review cadence 累积已通过 writer verification 的单元。
+- 为收批后的单元产出共享上下文、逐单元 verdict 的审核报告。
 - 维护迁移状态。
 - 记录可复用经验。
 
-重点是让快速 loop 仍然产出可理解、可审核、可回滚的代码。
+重点是让快速 loop 仍然产出可理解、可审核、可回滚的代码。强行为一致性是默认目标；在不能重写整个外部 framework 的边界，显式的 verified Rust compatibility 比对 framework internals 做伪 parity 更可靠。
 
 ## 为什么用 Skills
 

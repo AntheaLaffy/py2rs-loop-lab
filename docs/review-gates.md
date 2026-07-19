@@ -2,7 +2,12 @@
 
 [中文版本](review-gates.zh.md)
 
-py2rs separates writing from reviewing. A writer can prepare code and fixtures, but review evidence must come from a separate role.
+py2rs separates writing from reviewing. A writer can prepare code and fixtures, but review evidence must come from a separate role. Each unit first selects one R0 oracle in the manifest.
+
+Independent review does not have to start after every writer pass. The
+manifest's `review_policy` may select per-unit review, one aggregate review every
+N units, or an end-of-scope review for a small project. The default is a
+three-unit batch when the user does not choose.
 
 ## R0 Behavior
 
@@ -10,7 +15,19 @@ Skill: [`py2rs-review-r0-behavior`](../skills/py2rs-review-r0-behavior/SKILL.md)
 
 Purpose: prove that the rewritten implementation preserves the selected public behavior.
 
-R0 checks public inputs, outputs, errors, side effects, persistence and user-visible payloads through the accepted project seam. R0 is always first. A unit should not be promoted before R0 evidence exists.
+R0 behavior checks public inputs, outputs, errors, side effects, persistence and user-visible payloads through the accepted project seam. A batch also checks integration. It applies only to `behavior_parity`.
+
+## R0 Compatibility
+
+Skill: [`py2rs-review-r0-compatibility`](../skills/py2rs-review-r0-compatibility/SKILL.md)
+
+Purpose: prove that a new Rust unit remains application-compatible with already
+behavior-verified canonical Rust contracts.
+
+Use it only for predeclared `rust_compatibility` units, such as tensor handoff,
+codecs, model artifacts and model loading in a deep inference chain. It does not
+compare excluded Python framework internals or claim Python parity, but any
+difference that reaches a declared application contract must fail.
 
 ## R1 Rust Style
 
@@ -62,4 +79,20 @@ R6 checks CLI/help text, recovery, batching, cache behavior, error readability, 
 
 ## Gate Selection
 
-R0 is mandatory before promotion. R1-R6 are selected by risk, manifest policy and the granularity profile. High-risk public contracts may need several gates. Low-risk internal helpers may need only R0 plus a focused follow-up.
+R0 is mandatory before promotion: each unit selects exactly one of behavior or compatibility. R1-R6 are selected by risk, manifest policy and granularity. Failed parity cannot trigger an ad hoc compatibility switch.
+
+## Batch Rules
+
+- Each unit must pass writer verification and remain `reimplemented` before it
+  enters an open batch.
+- Flush the batch at its configured size, scope completion or a promotion
+  request. `risk_override` controls high-risk boundaries and defaults to an
+  early flush.
+- Run the behavior/compatibility R0 selected by each unit first, then the union
+  of additional roles.
+- Each role may write one batch report, but it must list unit ids and per-unit
+  verdicts. `not_required` is valid only when that unit's manifest does not
+  require the role.
+- One failed unit does not erase valid evidence for the others; promote only
+  units whose required verdicts all pass.
+- After remediation, rerun R0 and any other gates affected by the fix.

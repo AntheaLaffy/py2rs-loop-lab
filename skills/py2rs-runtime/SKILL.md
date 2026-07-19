@@ -1,6 +1,6 @@
 ---
 name: "py2rs-runtime"
-description: "[DRAFT] 初始化 py2rs 重写偏好并建立迁移控制面：在 NOTES.md 记录依赖重写力度、框架偏好、crate 侦察模式和 registry 代理，维护 manifest 或 manifest shards、迁移粒度、状态机、路由/adapter、回滚和审计。"
+description: "[DRAFT] 初始化 py2rs 重写偏好并建立迁移控制面：维护 manifest/shards、迁移粒度、behavior-parity 或 Rust-compatibility oracle、审核批次、默认串行执行、协调式并行、canonical shared dependencies、Cargo build 调度、状态机、回滚和审计。"
 ---
 
 # py2rs-runtime — 迁移控制面与可选路由层
@@ -13,7 +13,7 @@ description: "[DRAFT] 初始化 py2rs 重写偏好并建立迁移控制面：在
 2. 确认项目已有 seam。如果已有稳定 facade/adapter/command/API boundary，优先沿用。
 3. 初始化仓库时，询问或读取用户的 rewrite preferences，并把偏好写入 `NOTES.md`。
 4. 项目事实、seam 和偏好稳定后，为固定操作创建项目专属 script-backed skills。
-5. 初始化仓库或重切 manifest 前，询问或读取用户的 granularity profile。
+5. 初始化仓库或重切 manifest 前，询问或读取 granularity、verification oracle、review cadence、manifest partitioning 和 execution policy；默认串行。
 6. 只有在 Python 进程仍是统一入口时，才创建 Python runtime router。
 7. 若项目已有控制面，扩展它；不要另起一个与项目冲突的 py2rs manifest。
 
@@ -53,9 +53,32 @@ granularity_profile:
   default_unit_size: balanced # coarse | balanced | fine | ultra_fine
   review_budget: behavior_first # behavior_first | full_gate | risk_based
   token_budget_policy: "User-approved tradeoff between review cost and quality."
-  parallelism: single_manifest # single_manifest | shard_when_stable | shard_now
+  manifest_partitioning: shard_when_stable # single_manifest | shard_when_stable | sharded
   high_precision_domains: []
   coarse_allowed_domains: []
+
+execution_policy:
+  mode: serial # serial | coordinated_parallel
+  source: default # user | default
+  coordinator_required_for_parallel: true
+  shared_dependency_registry: manifest/shared-dependencies.yaml
+  cargo_build_policy: serialized
+  temporary_dependency_policy: disposable_only
+  coordinator:
+    status: not_required # not_required | assigned
+    owner: null
+
+review_policy:
+  cadence:
+    mode: batch # per_unit | batch | end_of_scope
+    units_per_review: 3 # 1 for per_unit; null for end_of_scope
+    scope: manifest # manifest | shard | named:<scope-id>
+    source: default # user | default
+  risk_override: flush_batch # flush_batch | follow_cadence
+  flush_triggers:
+    - batch_full
+    - scope_complete
+    - before_promotion
 
 status_values:
   - planned
@@ -73,15 +96,36 @@ units:
     current_owner: legacy
     target_owner: rust
     public_interface_policy: "Preserve existing public behavior."
+    verification_policy:
+      mode: behavior_parity # behavior_parity | rust_compatibility
+      oracle:
+        kind: legacy_public_seam # legacy_public_seam | verified_rust_contract
+        evidence: []
+      rationale: "Legacy public behavior remains the oracle."
+      required_contracts: []
+      excluded_legacy_internals: []
     dependency_recon:
       mode: agent # agent | manual | disabled
       status: pending # not_required | pending | complete | policy_rejected | manual | user_disabled | blocked
       report: null
     required_reviews:
       - behavior_reviewer
+    writer_verification:
+      status: pending # pending | passed | failed
+      evidence: null
+    review_batch: null
     verification:
       - "test command or behavior fixture"
     rollback: "Route back to legacy owner."
+
+review_batches:
+  - id: review-0001
+    scope: manifest
+    status: open # open | in_review | complete
+    unit_ids: []
+    required_reviews: []
+    reports: []
+    unit_verdicts: {}
 ```
 
 For simple Python module migration, a `modules:` map with `path_py`, `path_rs` and `signature` is acceptable.
@@ -90,7 +134,8 @@ For simple Python module migration, a `modules:` map with `path_py`, `path_rs` a
 
 The manifest should record how finely the user wants the rewrite cut. Ask during
 repository initialization, because unit size determines review count, token
-cost, parallelism, hallucination risk, dead-code risk and rollback precision.
+cost, potential shard boundaries, hallucination risk, dead-code risk and
+rollback precision.
 
 Use these levels as vocabulary, not as rigid categories:
 
@@ -115,13 +160,77 @@ Record:
 - domains requiring fine-grained cuts
 - domains allowed to stay coarse
 - default review roles per size
+- review cadence: every unit, every N units, or the end of the current scope
 - token/time/cost policy
-- sharding preference for parallel Codex sessions
+- manifest partitioning independently from execution concurrency
+- execution mode, defaulting to one serial writer
 
 If the user has not chosen, start with `balanced` and explicitly mark it as an
 assumption. Revisit the profile when R0 failures cluster, when review overhead
 exceeds implementation work, or when dependency expansion reveals better unit
 boundaries.
+
+## Execution Policy
+
+Manifest sharding and writer concurrency are separate decisions. Large projects
+may use shards for ownership, dependency order, review scope and resumability
+while a single writer processes them serially. Serial execution is the default
+because multiple agents repeat context, compete for Cargo builds, and can create
+incompatible private dependency implementations.
+
+When sharding, parallel execution, shared Rust code, or shared Cargo state is
+relevant, read [execution-policy.md](references/execution-policy.md) completely.
+Use `coordinated_parallel` only after its admission gate passes. It requires one
+coordinator to own the shared dependency registry, root manifests/lockfiles and
+serialized Cargo build queue. `/tmp` remains disposable research only.
+
+## Review Cadence
+
+Ask how many completed migration units should share one independent review
+cycle. Record this separately from `review_budget`: budget selects review roles;
+cadence schedules them. Also ask whether high-precision boundaries should flush
+the current batch or follow that cadence.
+
+- `per_unit`: set `units_per_review: 1`.
+- `batch`: require a positive `units_per_review`; default to `3` when the user
+  does not choose.
+- `end_of_scope`: set `units_per_review: null` and name the manifest, shard, or
+  small-project scope whose completion closes the batch.
+
+Treat the review batch only as a scheduling and evidence container. Keep each
+unit's owner, verification, rollback and promotion state independent.
+
+After each writer pass, run the unit's declared verification. Only passing
+writer-verified units may enter an open review batch. They remain
+`reimplemented`; the control plane must keep the legacy path as default until
+the required independent evidence exists.
+
+Close and review the batch when its size is reached, its scope is complete, or a
+promotion is requested. Default `risk_override: flush_batch` also closes it at
+a recorded high-precision boundary; `follow_cadence` lets the user's selected
+schedule take precedence. If writer verification fails, stop accumulating units
+and fix the failure; do not spend a review cycle on a knowingly broken batch.
+
+Run R0 once over the closed batch, checking every unit and their integration.
+Then run the union of additional roles required by the included units. A batch
+report is valid only when it names the batch and records an explicit verdict for
+each unit. `not_required` is valid only when the unit's manifest does not require
+that report's role. Update unit state individually, so one failure does not
+erase valid evidence for unrelated passing units.
+
+## Verification Policy
+
+Record one R0 oracle per unit before implementation. Default to
+`behavior_parity` against the legacy public seam. Use `rust_compatibility` only
+when exact legacy parity would require reproducing out-of-scope framework
+internals and the application instead needs compatibility with already verified
+canonical Rust contracts.
+
+Compatibility mode must reference verified upstream Rust evidence and name the
+application contracts that still cannot break: tensor shape/dtype/layout,
+codec/artifact formats, model loading, schemas, handoff and error projection as
+relevant. Record excluded legacy internals explicitly. Never switch modes merely
+because parity tests failed, and never use an unverified or circular Rust oracle.
 
 ## Rewrite Preferences
 
@@ -161,11 +270,11 @@ Select `prompt` or `scaffold` independently for each project role. Keep exactly
 one variant under agent skill discovery roots; archive its counterpart outside
 those roots and start a fresh session after every mode switch.
 
-## Manifest Shards
+## Manifest Partitioning And Execution
 
-大型重写不一定只能有一个长 manifest。若用户希望开多个 Codex 并行工作，且项目
-能划出稳定边界，可以建立 root manifest/index，再为每个范围维护独立 shard
-manifest。
+大型重写不一定只能有一个长 manifest。只要项目能划出稳定 ownership 和依赖
+边界，就可以建立 root manifest/index，再为每个范围维护独立 shard manifest。
+这主要是控制面分割，不表示应该启动多个 Codex；默认仍按依赖顺序串行执行。
 
 Root index example:
 
@@ -212,6 +321,11 @@ units:
     current_owner: legacy
     target_owner: rust
     public_interface_policy: "Preserve parser output and error projection."
+    verification_policy:
+      mode: behavior_parity
+      oracle:
+        kind: legacy_public_seam
+        evidence: []
     required_reviews:
       - behavior_reviewer
     verification:
@@ -226,26 +340,27 @@ unit modifies the same public contract.
 Rules:
 
 - Split by ownership boundary and public contract, not by line count.
-- Keep shared DTOs, errors, fixtures and adapters in their own prerequisite
-  shard when multiple teams need them.
-- One worker owns one shard at a time.
+- Keep shared DTOs, errors, fixtures, adapters, forked crates and hand-written
+  dependency gaps in canonical prerequisite shards when multiple units need them.
+- Under serial execution, keep one writer unit active and traverse shards in
+  dependency order.
+- Under coordinated parallel execution, one coordinator assigns shards and owns
+  root manifests, shared Cargo files, the canonical dependency registry and the
+  build queue. Workers never create private reusable dependencies.
 - Cross-shard edits require an explicit record and dependency update in the root
   index.
 - Promotion is per unit, but global release readiness is evaluated from the root
   index.
-- Root rollback must remain understandable even when shard work proceeds in
-  parallel.
-- Sharding must respect the granularity profile: do not create many shards just
-  to parallelize if the user chose a coarse or low-token rewrite, and do not
-  force one serial manifest when the user chose fine-grained high-quality work
-  with stable independent domains.
+- Root rollback must remain understandable regardless of execution mode.
+- Sharding must respect the granularity profile and improve control-plane
+  clarity; do not create shards merely to justify parallel agents.
 
 ## State Rules
 
 - `planned`: described but not started.
 - `active`: implementation work has started.
 - `reimplemented`: new path exists but independent review is incomplete.
-- `verified`: behavior evidence and required reviews passed.
+- `verified`: the selected R0 evidence and required reviews passed.
 - `promoted`: target owner is the default runtime path.
 - `optimized`: post-promotion quality work is complete.
 - `blocked`: cannot proceed without an explicit decision or external dependency.
@@ -253,8 +368,11 @@ Rules:
 Rules:
 
 - Advance state only when reality changed.
-- Do not skip behavior review.
+- Do not skip the selected behavior-parity or Rust-compatibility R0 gate.
 - Do not let a writer mark their own work verified.
+- Keep batched units `reimplemented` and on the legacy default route until their
+  per-unit verdicts and required reports pass.
+- Never carry an open batch past its configured flush trigger.
 - Keep rollback notes before promotion.
 - Record non-obvious lessons in rewrite records.
 
@@ -296,11 +414,15 @@ The bridge must preserve public behavior and error semantics until a migration u
   that the project is not stable enough to scaffold them yet.
 - A recorded granularity profile, or an explicit assumption that `balanced` is
   being used until the user decides.
-- For large parallel rewrites, either a root manifest with shard manifests or an
-  explicit decision not to shard.
+- A recorded review cadence, or an explicit default of a three-unit batch.
+- A recorded manifest partitioning choice and execution policy; serial is the
+  default even for large sharded rewrites.
+- A canonical shared dependency registry when multiple units consume common
+  crates, forks, generated sources or hand-written capabilities.
 - A documented public interface policy for each unit.
+- A declared verification policy and non-circular oracle for each unit.
 - A rollback route for each unit.
-- Review roles required before promotion.
+- Review roles and batch membership required before promotion.
 - A history/audit trail for state changes.
 
 ## Acceptance
@@ -310,11 +432,20 @@ The bridge must preserve public behavior and error semantics until a migration u
 - Invalid state jumps are rejected or clearly documented.
 - The manifest names verification commands or fixtures.
 - The runtime/control plane has no business logic.
-- Unit sizes and review requirements match the recorded granularity profile.
+- Unit sizes, review requirements and review timing match the recorded
+  granularity profile and review policy.
+- Open review batches contain only writer-verified `reimplemented` units and
+  cannot be promoted before per-unit verdicts exist.
+- Every unit has exactly one selected R0 gate; Rust-compatibility units reference
+  already verified canonical Rust evidence and explicit application contracts.
 - Rewrite preferences live in `NOTES.md`; repository initialization has not
   introduced speculative Cargo dependencies.
 - Every dependency-sensitive unit distinguishes completed, manual, disabled,
   and blocked crate reconnaissance instead of treating missing evidence as a pass.
+- Sharded manifests do not activate parallel writers by themselves.
+- Parallel mode has an assigned coordinator, canonical shared dependency paths,
+  exclusive shared-file ownership and serialized Cargo build scheduling.
+- No durable dependency, build input or handoff artifact points to `/tmp` or an
+  agent-private copy.
 - For sharded manifests, shard boundaries, dependencies and cross-shard contracts
-  are explicit enough for separate Codex sessions to work without editing the
-  same control-plane scope.
+  are explicit enough for serial traversal or coordinator-assigned workers.

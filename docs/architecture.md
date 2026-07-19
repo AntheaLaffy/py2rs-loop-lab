@@ -13,9 +13,12 @@ The control plane records:
 - migration units
 - current owner and target owner
 - public interface policy
+- verification policy and oracle evidence
 - verification commands or fixtures
 - rollback route
 - required review roles
+- review cadence, current review batch and per-unit verdicts
+- manifest partitioning, execution policy, canonical shared dependencies and Cargo build policy
 - current state
 
 The control plane can be a YAML manifest, Tauri backend facade, HTTP adapter, CLI dispatcher, feature flag registry or pipeline stage registry. A Python router is only appropriate when Python remains the orchestrating process.
@@ -39,7 +42,8 @@ Meta-skills retain architecture judgment because seams, domain ownership and
 migration boundaries depend on project truth. Once those decisions stabilize,
 repository initialization should generate project-specific operational skills.
 Their documentation records steps and schemas; tested scripts own deterministic
-registry collection, state transitions, fixture orchestration and report checks.
+registry collection, state transitions, review-batch flushing, fixture
+orchestration and per-unit report checks.
 
 This reduces repeated prompt mechanics without pretending that code generation
 can replace architectural reasoning. A role stays in `prompt` mode while its
@@ -84,6 +88,56 @@ Available vocabulary:
 
 Finer units cost more review rounds and tokens. They also reduce hallucination risk, dead-code risk and behavioral drift.
 
+## Review Cadence
+
+Migration granularity controls how large each unit is. Review cadence controls
+how many completed units share one independent review cycle. Ask the user during
+repository initialization:
+
+- `per_unit`: review after every unit; use for high-risk public contracts.
+- `batch`: run one aggregate review every N units; default N to 3 when the user
+  does not choose.
+- `end_of_scope`: review after all units in the current manifest, shard or named
+  scope are written; useful for a small project.
+
+A review batch is only a scheduling and evidence container. It does not merge
+the ownership, verification, rollback or promotion state of migration units.
+
+Every writer pass still runs the unit's own verification. A passing unit remains
+`reimplemented` and enters the open review batch. The legacy owner remains the
+default path and the unit cannot be promoted until independent review passes.
+
+Flush the batch when it reaches N, its scope completes, or promotion is
+requested. The default `risk_override: flush_batch` also flushes at a
+high-precision domain boundary; the user may select `follow_cadence` to keep
+those units on the overall schedule. Run one R0 pass over the batch, including
+cross-unit integration behavior, then run the union of its additional required
+roles. Each role may write one batch report, but that report must give every
+unit its own verdict. Use `not_required` only when the unit's manifest does not
+require that role, so one failure does not indiscriminately block the rest.
+
+## Verification Target
+
+Select one R0 oracle per unit before implementation:
+
+- `behavior_parity`: default; the legacy Python public seam is the oracle and a
+  behavior reviewer proves strict parity.
+- `rust_compatibility`: only for a declared deep framework/runtime boundary; the
+  oracle is already behavior-verified canonical Rust contracts and a
+  compatibility reviewer proves application compatibility.
+
+Python and Rust deep-learning frameworks may interpret tensor shape, dtype,
+layout or artifacts differently in ways that break codecs, model configuration
+or weight loading. Reproducing the entire Python framework is out of scope. At
+that inference-chain entry, `rust_compatibility` may instead test tensor handoff,
+codecs, model loading, schema and error projection while excluding framework
+internals.
+
+Record the rationale, verified Rust unit/report evidence, required contracts and
+excluded legacy internals before writer work. A parity failure cannot silently
+trigger the switch, the new unit cannot be its own oracle, and compatibility
+evidence must not be presented as Python parity.
+
 ## Rewrite Preferences
 
 Repository initialization uses a separate preference profile to record how strongly the user wants to reuse Rust ecosystem dependencies and which relevant frameworks they prefer. It lives in `NOTES.md`, not in the manifest:
@@ -127,6 +181,12 @@ Allowed paths:
 
 Fewer Rust dependencies is not a success metric. Under `standard`, full wheel rebuilding is not the default either. The selected path must follow the recorded rewrite profile, and each unit records how the preference was applied or why it was changed.
 
+When units share a crate, fork, adapter, generated source tree or hand-written
+capability, check one canonical shared dependency registry first. A common gap
+such as missing Burn functionality becomes one project prerequisite unit/shard
+with one owner, path and build record. `/tmp` and agent-private paths are
+disposable research only.
+
 Disabled reconnaissance is recorded as `user_disabled`, not as completed search. It permits progress but leaves explicit residual ecosystem risk.
 
 ## Source Expansion
@@ -135,9 +195,11 @@ At repository initialization, first-layer direct Python dependencies may be expa
 
 Second-layer or deeper dependencies require public-seam call-path evidence. Lockfile transitivity alone is not enough. py2rs rewrites the project, not the entire Python or native ecosystem.
 
-## Manifest Shards
+## Manifest Partitioning And Execution
 
-Large rewrites may use a root manifest plus shard manifests when boundaries are stable enough for parallel Codex sessions.
+Large rewrites may use a root manifest plus shard manifests when boundaries are
+stable. Sharding reduces per-session context and exposes ownership, dependency
+order, review scope and rollback. It does not imply parallel writers.
 
 Shards must name:
 
@@ -145,7 +207,19 @@ Shards must name:
 - public seam
 - cross-shard contracts
 - shared prerequisites
+- canonical dependency paths
 - verification commands
 - rollback routes
 
-Sharding is for real independent progress, not for hiding an unclear architecture.
+Default to `execution_policy.mode: serial`: one writer traverses shard dependency
+order. This usually consumes fewer tokens and avoids Cargo lock/target
+contention, duplicated compilation and shared-dependency drift.
+
+Use `coordinated_parallel` only after explicit user acceptance and after a
+coordinator exclusively owns the root manifest, shared dependency registry,
+shared `Cargo.toml`/`Cargo.lock`, and serialized build queue. Workers edit only
+assigned paths and request shared dependency changes instead of creating a
+private `/tmp` copy.
+
+An open review batch belongs to one manifest or shard by default. Aggregate
+cross-shard release readiness in the root index.

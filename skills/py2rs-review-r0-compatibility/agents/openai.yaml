@@ -1,0 +1,4 @@
+interface:
+  display_name: "Py2rs R0 Compatibility"
+  short_description: "Verify declared Rust compatibility contracts"
+  default_prompt: "Verify one declared Rust compatibility unit or batch against canonical verified Rust contracts without requiring Python framework parity."

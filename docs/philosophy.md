@@ -39,10 +39,12 @@ The human owns the constraints that define the loop:
 - the reason for the rewrite
 - accepted architecture seams
 - public behavior that must not change
+- which units target Python behavior parity and which deep boundaries target verified-Rust compatibility
 - migration unit granularity
-- review budget and token budget
+- review budget, review cadence and token budget
 - dependency source expansion policy
 - crate reuse, adapter or hand-written replacement tradeoffs
+- manifest partitioning and serial or explicitly coordinated-parallel execution
 - project-specific rules that deserve their own skills
 
 The AI operates inside those constraints.
@@ -53,13 +55,14 @@ The AI can still do substantial work:
 
 - inspect project facts
 - propose or re-cut manifest units
-- implement one unit at a time
+- use one writer in dependency order by default, even when the manifest is sharded
 - add fixtures and tests
-- produce review reports
+- accumulate writer-verified units according to the user's review cadence
+- produce batch reports with shared context and per-unit verdicts
 - maintain migration state
 - record reusable lessons
 
-The point is to make fast loops produce code that can be understood, reviewed and rolled back.
+The point is to make fast loops produce code that can be understood, reviewed and rolled back. Strict behavior parity is the default; at a boundary where the whole external framework cannot be rewritten, explicit verified-Rust compatibility is more rigorous than pretending to match framework internals.
 
 ## Why Skills
 

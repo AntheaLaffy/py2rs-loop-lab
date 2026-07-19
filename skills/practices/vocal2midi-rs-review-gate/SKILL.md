@@ -1,6 +1,6 @@
 ---
 name: vocal2midi-rs-review-gate
-description: Review one Vocal2Midi Rust migration unit quality gate without writing production code. Use for behavior parity review, dependency/seam review, error tracing review, data or algorithm review, Rust style audit, architecture review, product ergonomics review, or promotion readiness.
+description: Review one Vocal2Midi Rust migration unit quality gate without writing production code. Use for Python behavior parity, verified-Rust application compatibility, dependency/seam, error tracing, data/algorithm, Rust style, architecture, ergonomics, or promotion readiness.
 ---
 
 # Vocal2Midi Rust Review Gate
@@ -28,6 +28,9 @@ Completion criterion: review findings cite code, fixtures, docs, or commands.
 
 - `behavior_reviewer`: Python/Rust parity, public inputs, outputs, ordering,
   errors, fixtures, and rollback.
+- `compatibility_reviewer`: deep inference compatibility against already
+  behavior-verified canonical Rust tensor, codec, model-artifact and handoff
+  contracts; it does not claim Python framework parity.
 - `dependency_bootstrap_reviewer`: capability coverage, kept-legacy decisions,
   seam choice, provisional inventory changes, crate reuse plus compatibility
   adapter choices, first-layer source coverage, targeted transitive expansion,
@@ -44,14 +47,14 @@ Completion criterion: review findings cite code, fixtures, docs, or commands.
 - `product_ergonomics_reviewer`: CLI/Web/GUI workflow impact, user-visible
   messages, recovery, and operational ergonomics.
 
-If the user asks for all reviews, run behavior first and state that remaining
-roles must be separate passes or separate agents.
+If the user asks for all reviews, run the manifest-selected behavior or
+compatibility R0 role first and state that remaining roles are separate passes.
 
 Completion criterion: one role and one unit are explicit.
 
 ## Review Workflow
 
-1. Confirm unit id and review role.
+1. Confirm unit id, review role, verification mode and oracle evidence.
 2. Confirm the unit stayed inside its minimum boundary, or that dependency
    expansion justifies the re-cut boundary.
 3. Confirm writer/reviewer separation.
@@ -95,6 +98,12 @@ Completion criterion: the report can be used as durable promotion evidence.
   padding, SIMD branches, or kernel selection matter only when they affect
   public outputs, errors, serialization, persistence, memory/ABI contracts,
   security, or model/numeric correctness.
+- For compatibility reviews, require pre-implementation
+  `verification_policy.mode: rust_compatibility`, verified non-circular Rust
+  oracle evidence, and application fixtures for model loading, codecs, artifacts
+  and tensor handoff. Do not compare excluded Python framework internals, but do
+  fail any difference that breaks the declared Rust application contracts.
+- Never turn a failed behavior review into compatibility approval.
 - If no issue is found, say so and document residual risk.
 
 ## Completion Response

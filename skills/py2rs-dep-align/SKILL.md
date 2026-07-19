@@ -1,6 +1,6 @@
 ---
 name: "py2rs-dep-align"
-description: "[DRAFT] 消费 crate reconnaissance 或用户手动生态证据，按 NOTES.md 中的重写力度和框架偏好对齐 Python/Rust 或 legacy/Rust 依赖。覆盖 crate/backend/adapter/手写能力组合、manifest 重切、seam、验证和桥接。"
+description: "[DRAFT] 消费 crate reconnaissance 或用户手动生态证据，按 NOTES.md 中的偏好对齐 Python/Rust 或 legacy/Rust 依赖。覆盖 canonical shared dependencies、crate/backend/adapter/手写能力组合、manifest 重切、seam、验证和桥接；用于避免串行或并行 writer 创建冲突依赖副本。"
 ---
 
 # py2rs-dep-align — 依赖与能力对齐
@@ -18,6 +18,9 @@ Stage 0 的目标是证明迁移有可行的能力覆盖和集成路径。先对
   disabled acknowledgement。
 - 目标迁移单元的公共接口和验证方式。
 - 已有第三方源码快照、vendored sources、native sources、source audit 或等价记录。
+- manifest 中的 `execution_policy`、shared dependency registry，以及当前
+  unit/shard 的依赖关系和允许修改的路径。
+- unit 的 `verification_policy` 和 oracle evidence。
 
 ## Apply Rewrite Preferences
 
@@ -121,6 +124,43 @@ overwriting the independent research judgment.
 - pandas/numpy 类能力可能由 `polars`、`arrow`、`ndarray` 或保留 Python owner 覆盖。
 - GUI/web/front-end 构建链不是 py2rs 迁移对象，除非该项目的迁移单元明确包含它。
 - 专有 SDK、闭源 binding 或 Rust 侧无法覆盖的能力保留 legacy owner，并通过 seam 集成。
+
+## Canonical Shared Dependencies
+
+Before adding a crate, fork, adapter, generated source tree, fixture harness, or
+hand-written implementation, search the project-controlled shared dependency
+registry and canonical source roots. Reuse an existing compatible capability
+instead of creating an agent-local alternative.
+
+When an upstream crate is incomplete, a hand-written gap can be the correct
+solution. If two or more units may need it, create or re-cut one shared
+prerequisite unit with a canonical project path, API, owner, consumers, source
+references, fixtures, and build evidence. For example, a missing Burn capability
+must not be independently implemented under two model shards.
+
+`/tmp` and agent-private directories are disposable discovery locations only.
+They cannot appear in a dependency record as the implementation path consumed
+by another unit. Promote useful code into the canonical project root, record it
+in the registry, and verify it there before reuse.
+
+Under `coordinated_parallel`, only the coordinator may change shared
+`Cargo.toml`, `Cargo.lock`, workspace members, patch configuration, vendored
+sources, or registry entries. A worker writes a dependency-change request and
+waits; it does not create a private dependency copy to bypass coordination.
+
+## Framework Compatibility Boundary
+
+Dependency analysis may reveal that Python and Rust deep-learning frameworks
+interpret tensors or model artifacts differently in ways that reach codecs,
+loading, schemas, or inference handoff. Do not propose rewriting the entire
+framework just to preserve its internals.
+
+If exact parity is out of scope, propose `rust_compatibility` before writer work
+and require a user/control-plane decision. The oracle must be already verified
+canonical Rust units, not Python internals or the new unit itself. Record the
+required tensor, codec, artifact, model-loading and error contracts plus the
+legacy internals intentionally excluded. A failed parity test alone is not a
+reason to switch verification mode.
 
 ## Dependency Source Expansion
 
@@ -241,8 +281,12 @@ Do not install bridge dependencies that the chosen seam does not need.
   crates or change a lockfile.
 - When a seam or selected migration unit enters Stage 0, identify, add and lock
   the dependencies required for its behavior parity.
+- In serial mode, update canonical manifests once and let later shards reuse the
+  recorded dependency and build evidence.
+- In coordinated parallel mode, route shared manifest/lockfile changes through
+  the coordinator and its serialized Cargo build queue.
 - During implementation and R0, avoid dependency churn. Missing essentials mean Stage 0 was incomplete.
-- During R1-R6, new dependencies are allowed only for the review objective and must preserve R0 behavior.
+- During R1-R6, new dependencies are allowed only for the review objective and must preserve the selected R0 contracts.
 - Prefer Rust Edition 2024 for new Rust crates unless the project constrains toolchain/FFI.
 
 ## Output
@@ -279,6 +323,23 @@ crate_reconnaissance:
   status: complete # complete | policy_rejected | manual | user_disabled | blocked
   report: "rewrite-records/dependencies/example-unit-crate-recon.yaml"
   residual_risk: null
+
+canonical_dependency:
+  registry: manifest/shared-dependencies.yaml
+  reuse:
+    - id: burn-missing-capability
+      path: rust/crates/burn-missing-capability
+  requested_changes: []
+  temporary_sources: disposable_only
+
+verification_policy:
+  mode: behavior_parity # behavior_parity | rust_compatibility
+  oracle:
+    kind: legacy_public_seam # legacy_public_seam | verified_rust_contract
+    evidence: []
+  required_contracts: []
+  excluded_legacy_internals: []
+  rationale: "Why this oracle is correct before implementation starts."
 
 rust:
   edition: "2024"
@@ -361,6 +422,17 @@ verification:
 - Behavior fixture/test dependencies are present.
 - The dependency record explains any legacy-owned capability.
 - The dependency record names reference sources for adapter or hand-written behavior.
+- The shared dependency registry was checked before adding or hand-writing a
+  capability.
+- Shared hand-written or patched capabilities have one canonical project path,
+  owner, consumer list and verification record.
+- No reusable dependency path points to `/tmp` or an agent-private directory.
+- Under coordinated parallel execution, only the coordinator changed shared
+  Cargo manifests, lockfiles, workspace members, patch configuration or the
+  canonical registry.
+- The verification policy was selected before writer work; compatibility mode
+  names verified Rust evidence and application-level contracts rather than
+  using a failed parity review as justification.
 - First-layer direct dependency snapshots are indexed when the project performs
   repository initialization.
 - Second-layer or deeper dependency expansion has public-seam call-path evidence;

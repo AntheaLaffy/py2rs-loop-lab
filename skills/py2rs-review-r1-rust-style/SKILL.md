@@ -1,6 +1,6 @@
 ---
 name: "py2rs-review-r1-rust-style"
-description: "[DRAFT] 第 1 轮 Rust 工程化审查。检查迁移后的 Rust 模块结构、可见性、所有权、lint 和可维护性；默认审查不改生产代码，修复需单独实现并重跑 R0。"
+description: "[DRAFT] 第 1 轮 Rust 工程化审查。对一个迁移单元或已收批的 review batch 检查 Rust 模块结构、可见性、所有权、lint 和可维护性；默认审查不改生产代码，修复需单独实现并重跑 R0。"
 ---
 
 # R1 Rust Style Review
@@ -9,9 +9,9 @@ R1 检查 Rust 代码是否从“行为等价但直译”走向可维护的 Rust
 
 ## Preconditions
 
-- R0 behavior report exists and is `pass` or accepted `pass-with-followups`.
-- Manifest unit is at least `reimplemented`.
-- Public behavior baseline can be rerun after any remediation.
+- The manifest-selected behavior or Rust-compatibility R0 report exists and is `pass` or accepted `pass-with-followups`.
+- Every in-scope manifest unit is at least `reimplemented`.
+- The selected R0 baseline can be rerun after any remediation.
 
 ## Review Focus
 
@@ -25,31 +25,33 @@ R1 检查 Rust 代码是否从“行为等价但直译”走向可维护的 Rust
 
 ## Workflow
 
-1. Confirm this is one review role for one unit.
+1. Confirm this is one review role for one unit or one closed review batch.
 2. Inspect only Rust code and public adapter surface needed for style/maintainability.
 3. Run non-mutating checks where useful.
 4. Report findings first with file/line references.
-5. Save a report with `pass`, `pass-with-followups` or `fail`.
+5. Save a report with `pass`, `pass-with-followups` or `fail` for each in-scope unit.
 
 ## Code Changes
 
 Default review-gate mode does not edit production code. If the user explicitly asks this skill to fix issues:
 
-- Make only style/structure changes that preserve R0 behavior.
+- Make only style/structure changes that preserve the selected R0 contracts.
 - Do not author the final R1 pass report for your own patch.
-- Require R0 behavior to be rerun after the patch.
+- Require the selected R0 gate to be rerun after the patch.
 
 ## Report
 
 Use project convention or:
 
 ```text
-reviews/YYYY-MM-DD-<unit-id>-rust-style.md
+reviews/YYYY-MM-DD-<unit-or-batch-id>-rust-style.md
 ```
 
 Include:
 
 - Scope reviewed
+- Included unit ids and per-unit verdicts (`not_required` only when the manifest
+  does not require R1 for that unit)
 - Rust files/interfaces inspected
 - Findings ordered by severity
 - Checks run

@@ -16,6 +16,7 @@
 - `skills/py2rs-dep-align`
 - `skills/py2rs-env-bootstrap`
 - `skills/py2rs-review-r0-behavior`
+- `skills/py2rs-review-r0-compatibility`
 
 需要更严格审核时，再安装：
 
@@ -41,6 +42,7 @@
 - skills/py2rs-dep-align
 - skills/py2rs-env-bootstrap
 - skills/py2rs-review-r0-behavior
+- skills/py2rs-review-r0-compatibility
 
 如果你有 skill-installer，请使用它；否则请下载仓库并复制这些目录。不要同时把不同版本复制到多个 discovery roots。安装完成后逐目录验证，并告诉我下一轮如何触发。
 ```
@@ -75,6 +77,7 @@ cp -R skills/py2rs-crate-recon "$dest/"
 cp -R skills/py2rs-dep-align "$dest/"
 cp -R skills/py2rs-env-bootstrap "$dest/"
 cp -R skills/py2rs-review-r0-behavior "$dest/"
+cp -R skills/py2rs-review-r0-compatibility "$dest/"
 ```
 
 可选：继续安装完整 R1-R6 审核门：
@@ -112,6 +115,7 @@ Copy-Item -Recurse -Force .\skills\py2rs-crate-recon $dest
 Copy-Item -Recurse -Force .\skills\py2rs-dep-align $dest
 Copy-Item -Recurse -Force .\skills\py2rs-env-bootstrap $dest
 Copy-Item -Recurse -Force .\skills\py2rs-review-r0-behavior $dest
+Copy-Item -Recurse -Force .\skills\py2rs-review-r0-compatibility $dest
 ```
 
 可选：继续安装完整 R1-R6 审核门：
@@ -158,7 +162,7 @@ npx ctx7 library rodio "WAV decoding feature and PCM sample API" --json
 重新打开 Codex/Claude，或开启新对话，让系统重新加载 skills 和 Context7 规则。然后在你的真实项目仓库里说：
 
 ```text
-请使用 py2rs-loop-lab 的思路研究当前项目，并为这个项目设计项目专属 rewrite skills。先不要改代码，先给我迁移边界、manifest/control plane 和 review gates 的建议。
+请使用 py2rs-loop-lab 的思路研究当前项目，并为这个项目设计项目专属 rewrite skills。先不要改代码，先给我迁移边界、behavior-parity/Rust-compatibility oracle、manifest partitioning、默认串行 execution policy、control plane、review roles 和 cadence 的建议。
 ```
 
-不要一上来就说“直接把 Python 改成 Rust”。更稳的起步方式是先让 AI 建立项目事实、选择 seam、定义回滚路径和审核门。
+不要一上来就说“直接把 Python 改成 Rust”。更稳的起步方式是先建立项目事实、选择 seam/oracle、定义回滚与 canonical dependencies，并让用户决定审核频率；即使清单分片，也默认单线程执行。

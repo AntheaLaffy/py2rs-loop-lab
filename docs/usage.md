@@ -18,6 +18,7 @@ Start with:
 - `skills/py2rs-dep-align`
 - `skills/py2rs-env-bootstrap`
 - `skills/py2rs-review-r0-behavior`
+- `skills/py2rs-review-r0-compatibility` when the project has a deep framework/runtime compatibility boundary
 
 Add R1-R6 review skills according to risk.
 
@@ -36,10 +37,17 @@ Add R1-R6 review skills according to risk.
 2. Identify the accepted seam: CLI, service facade, Tauri command facade, Python module, library API, pipeline stage or another project-specific boundary.
 3. Write or adapt project-specific skills for coordination, dependency bootstrap, writer work and review gates.
 4. Ask for the overall rewrite strategy, relevant framework categories, crate reconnaissance mode and crates.io proxy. Store them in `NOTES.md`; default to `standard` plus agent reconnaissance.
-5. Ask the user for the granularity profile.
-6. Create or reuse a manifest/control plane.
-7. Snapshot first-layer direct Python dependency sources when storage, license and policy allow it.
-8. Define rollback routes before implementation.
+5. Ask for granularity and identify verification boundaries. Default units to
+   `behavior_parity`; only predeclared deep framework/runtime boundaries use
+   `rust_compatibility` and a verified Rust oracle.
+6. Ask how many reimplemented units share one review: `per_unit`, every N units,
+   or `end_of_scope`. Default to a three-unit batch.
+7. Create or reuse the control plane and record manifest partitioning separately
+   from execution policy. Large projects may be sharded; execution defaults serial.
+8. Create a canonical shared dependency registry when units share capabilities;
+   `/tmp` cannot be a durable path.
+9. Snapshot first-layer direct Python dependency sources when policy allows it.
+10. Define rollback routes before implementation.
 
 Preference capture does not add crates or change a lockfile. Reconnaissance may be `agent`, `manual` or `disabled`; disabling saves tokens but requires the user to understand or manually research the Rust ecosystem. Dependencies are added and locked only after reconnaissance policy and dependency alignment are satisfied.
 
@@ -49,8 +57,8 @@ The initialization should preserve the [`teach`](../skills/foundations/teach/SKI
 
 Once the seam and state model are stable, scaffold fixed project workflows as
 script-backed skills. Keep architectural judgment in reasoning skills; move
-repeatable registry queries, state transitions, fixture orchestration and report
-validation into tested code so later sessions consume schemas instead of prompt
+repeatable registry queries, state transitions, review-batch flushing, fixture
+orchestration and per-unit report validation into tested code so later sessions consume schemas instead of prompt
 mechanics. Select `prompt` or `scaffold` per role, keep only the selected variant
 in skill discovery roots, and archive the other outside them. Start a fresh
 agent session after a mode switch.
@@ -97,17 +105,33 @@ Start a fresh session only after `notes_acknowledged`. If the script reports
 paths and phase; do not overwrite the active path with another copy. See
 [Architecture](architecture.md#mode-lifecycle) for the full invariants.
 
-## Work One Unit
+## Work One Write/Review Batch
 
 1. Select one migration unit from the manifest.
 2. Satisfy the `NOTES.md` crate reconnaissance mode: fresh agent report, manual evidence, or an acknowledged disabled warning.
-3. Apply the report/status and rewrite preferences during dependency alignment.
-4. Add or identify behavior fixtures.
-5. Implement behind the accepted seam.
-6. Mark the unit `reimplemented`, not `verified`.
-7. Run R0 behavior review.
-8. Run additional review roles required by the manifest.
-9. Promote only after review evidence exists.
+3. Apply reconnaissance/preferences and check canonical shared dependencies.
+4. Confirm Python behavior parity or verified-Rust compatibility policy.
+5. Add behavior or application-compatibility fixtures for that oracle.
+6. Implement behind the accepted seam.
+7. Run writer verification; when it passes, mark the unit `reimplemented` and
+   add it to the open review batch, not `verified`.
+8. If cadence is not reached and no early flush applies, select the next unit.
+9. Flush at N units, scope completion or before promotion; apply `risk_override`
+   at high-risk boundaries.
+10. Run each unit's selected behavior/compatibility R0 first, then additional
+   roles; every report gives per-unit verdicts.
+11. Promote a unit only after all of its own review evidence exists.
+
+## Manifest Partitioning And Execution
+
+Sharding is a control-plane tool for large projects, not a parallel switch.
+Prefer stable shards traversed serially by one writer so project context and
+Cargo artifacts are reused without competing builds or dependency drift.
+
+Start multiple writers only under explicit `coordinated_parallel`. The
+coordinator exclusively owns the root manifest, shared dependency registry,
+shared Cargo files and build queue. Workers edit assigned shard paths and wait
+for coordinator decisions on shared dependency changes.
 
 ## Build Project-Specific Skills First
 
@@ -122,8 +146,10 @@ Good project skills encode:
 - crate reconnaissance and registry proxy policy
 - per-role `prompt`/`scaffold` selection and off-discovery archive location
 - dependency expansion policy
+- verification policy and oracle evidence
+- manifest partitioning, serial-first execution, canonical dependency registry and Cargo build policy
 - writer workflow
-- review roles
+- review roles, review cadence and batch flush rules
 - promotion rules
 - non-negotiable project constraints
 

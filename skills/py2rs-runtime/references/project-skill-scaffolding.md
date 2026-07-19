@@ -40,8 +40,9 @@ decisions safely.
 
 Turn stable operational loops into project-specific script-backed skills.
 Examples include registry evidence collection, manifest state transitions,
-fixture orchestration, report schema validation, promotion checks, and repeatable
-bridge/bootstrap commands.
+review-batch accumulation and flush rules, fixture orchestration, per-unit
+verdict validation, canonical dependency lookup, Cargo build-queue enforcement,
+promotion checks, and repeatable bridge/bootstrap commands.
 
 Do not generate a script merely because a command appeared once. Scaffold when
 the inputs, outputs, failure modes, and completion criterion are stable enough
@@ -55,10 +56,14 @@ agent environment's project-local convention and record that location.
 
 Generate only the roles the project needs, commonly:
 
-- coordinator: project facts, manifest location, unit selection, and routing
+- coordinator: project facts, manifest/shard order, unit selection, verification
+  oracle, review cadence, canonical shared dependencies, Cargo build scheduling,
+  and routing
 - crate reconnaissance/dependency bootstrap: deterministic evidence collectors
-- unit writer: fixture commands, state updates, and implementation boundary
-- review gates: repeatable checks and report validation
+- unit writer: oracle-specific fixture commands, state updates, implementation
+  boundary, and adding writer-verified units to the open review batch
+- review gates: selected behavior-parity or Rust-compatibility R0, batch-scoped
+  checks, per-unit verdicts, and report validation
 
 For every generated skill:
 
@@ -68,6 +73,15 @@ For every generated skill:
   `scripts/`;
 - use `references/` only for project schemas or conditional detail;
 - make scripts accept explicit inputs and produce machine-readable output;
+- make batch scripts reject invalid cadence values, promotion with open review
+  requirements, and units whose writer verification has not passed;
+- reject missing, circular or post-failure `rust_compatibility` oracle changes;
+- default generated writer workflows to serial execution even for sharded
+  manifests;
+- if coordinated parallel mode is enabled, make scripts enforce coordinator-only
+  shared dependency/Cargo file changes, worker path ownership, and a serialized
+  build queue;
+- reject `/tmp` and agent-private paths as canonical dependency inputs;
 - prevent scripts from silently advancing manifest state after failed checks.
 
 ## Switch Modes Safely

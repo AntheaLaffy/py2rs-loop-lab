@@ -1,6 +1,6 @@
 ---
 name: vocal2midi-rs-rewrite
-description: Coordinate the Vocal2Midi Python-to-Rust rewrite. Use when the user asks to continue, plan, route, re-cut, shard, implement, audit, promote, or choose the next Vocal2Midi Rust migration unit; when dependency source expansion, capability coverage, or project-specific rewrite workflow may change the manifest inventory.
+description: Coordinate the Vocal2Midi Python-to-Rust rewrite. Use when the user asks to continue, plan, route, re-cut, shard, implement, audit, promote, choose serial or coordinated-parallel execution, or select the next migration unit; when shared Burn gaps, dependency source expansion, capability coverage, or workflow may change the manifest inventory.
 ---
 
 # Vocal2Midi Rust Rewrite
@@ -76,16 +76,35 @@ the plan is routed to dependency/bootstrap discovery.
   or `optimized`.
 - A selected unit may still be split, merged, renamed, deferred, or replaced
   after dependency discovery.
-- Keep one unit active unless the user explicitly asks for disjoint parallel
-  work. For parallel Codex sessions, propose manifest shards only when
-  Vocal2Midi boundaries are stable enough to name owned units, excluded units,
-  shared prerequisites, cross-shard contracts, verification commands, and
-  rollback.
-- Do not skip R0 behavior review to optimize later units.
-- Do not promote a unit without behavior evidence, required reviews, and a
+- Manifest sharding does not imply parallel writers. Keep one unit active and
+  process model shards serially by default; this avoids repeated model context,
+  Cargo contention and conflicting dependency implementations.
+- Use coordinated parallel work only after explicit user opt-in, stable disjoint
+  shard paths, canonical shared prerequisites, an assigned coordinator, and a
+  serialized Cargo build queue. Otherwise remain serial.
+- Do not skip the manifest-selected R0 behavior or Rust-compatibility gate.
+- Do not promote a unit without its selected R0 evidence, required reviews, and a
   rollback route.
 
 Completion criterion: the next unit and route are explicit.
+
+## Verification Target
+
+Default preprocessing, parsing, adapter and other legacy-facing units to
+`behavior_parity` against Python public behavior.
+
+At the start of a deep inference chain, explicitly switch applicable units to
+`rust_compatibility` when Python and Rust framework tensor interpretations make
+exact parity require rewriting the deep-learning framework. The target is not
+Python and not the new unit itself. It is the already behavior-verified canonical
+Rust codecs, tensor contracts, model artifact schemas and upstream units named
+by the manifest.
+
+Compatibility review must still prove model/config/weight loading, codec
+roundtrips, tensor shape/dtype/layout handoff, errors and application workflow.
+Framework-internal tensor abstractions may be excluded only when the manifest
+records them before implementation. A failed Python/Rust parity test cannot
+silently trigger this switch.
 
 ## Source Boundary
 
@@ -95,7 +114,7 @@ Borrow from py2rs:
 - reversible state
 - manifest-driven progress
 - writer/reviewer separation
-- R0 behavior review before promotion
+- one declared R0 behavior-parity or Rust-compatibility gate before promotion
 
 Borrow from teach:
 
@@ -113,14 +132,17 @@ fits Vocal2Midi.
 1. Ground in state: read manifest, resources, records, selected sources, and
    existing tests.
 2. Run the discovery check and re-cut provisional units when needed.
-3. Define the unit's public behavior boundary, current owner, target owner,
-   verification command, and rollback route.
-4. Ensure dependency/bootstrap records exist before implementation when the
-   unit needs new crates, fixtures, or bridge/seam decisions.
-5. Add or identify behavior fixtures before changing production paths.
+3. Define the unit's public boundary, current owner, target owner, verification
+   policy/oracle, verification command, and rollback route.
+4. Check the canonical shared dependency registry, then ensure
+   dependency/bootstrap records exist before implementation when the unit needs
+   new crates, fixtures, hand-written Burn gaps, or bridge/seam decisions.
+5. Add behavior-parity fixtures or Rust application-compatibility fixtures,
+   according to the declared oracle, before changing production paths.
 6. Implement behind the accepted boundary through `vocal2midi-rs-unit-writer`.
 7. Mark implemented-but-unreviewed work as `reimplemented`, not `verified`.
-8. Run or request `vocal2midi-rs-review-gate` for required review roles.
+8. Run or request the selected R0 role through `vocal2midi-rs-review-gate`, then
+   the other required review roles.
 9. Promote only after reviews pass and rollback remains clear.
 10. Record reusable lessons in `rewrite-in-rust/records/`.
 
@@ -129,7 +151,9 @@ obvious.
 
 ## Non-Negotiables
 
-- Existing Python public behavior is the compatibility source.
+- Python public behavior is the oracle for `behavior_parity` units. Deep
+  inference `rust_compatibility` units target only already verified canonical
+  Rust contracts named by the manifest.
 - GUI, Flask/Web handlers, and model inference remain legacy-owned unless a unit
   explicitly changes that boundary.
 - Runtime/control-plane code must not contain business logic.
@@ -150,6 +174,13 @@ obvious.
   model/numeric correctness.
 - The initial module list is temporary; do not preserve it when dependency
   expansion proves a better boundary.
+- Shared Burn gaps, adapters, generated sources and fixture harnesses have one
+  canonical project path and prerequisite owner. Never reimplement them under a
+  second model shard.
+- `/tmp` and agent-private dependency copies are disposable research only and
+  cannot be consumed by another unit.
+- Only a coordinator may modify shared Cargo manifests/lockfiles or schedule
+  competing builds in coordinated parallel mode.
 - Use uv Python 3.12.x for Python checks; do not use the system `python`.
 
 ## Completion Response

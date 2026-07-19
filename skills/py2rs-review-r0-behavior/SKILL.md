@@ -1,6 +1,6 @@
 ---
 name: "py2rs-review-r0-behavior"
-description: "[DRAFT] 第 0 轮行为一致性门禁。独立证明旧实现与新实现在选定 public seam 后行为一致；不写生产代码，只运行/补充对比证据并输出报告。"
+description: "[DRAFT] 第 0 轮行为一致性门禁。对一个迁移单元或已收批的 review batch，独立证明旧实现与新实现在选定 public seam 后行为一致；不写生产代码，只运行/补充对比证据并输出报告。"
 ---
 
 # R0 Behavior Review
@@ -21,6 +21,7 @@ Read first:
 - rollback route
 - old and new implementation paths or adapters
 - existing tests/fixtures/logs for the behavior
+- `verification_policy`, which must select `behavior_parity`
 
 Do not rely on the writer's explanation when code, tests or docs can answer.
 
@@ -38,19 +39,25 @@ Do not force `py/` and `rs/` paths if the project uses another architecture.
 
 ## Workflow
 
-1. Confirm unit id and current manifest state.
-2. Confirm public interface policy and rollback route.
-3. Build a behavior comparison matrix: normal, boundary, error, side effect and persistence cases.
-4. Run existing comparison tests or add non-production fixtures/tests if the repo convention allows reviewer-owned test artifacts.
-5. Compare old/new outputs, errors, logs, side effects and user-visible payloads.
-6. Report findings first, ordered by severity.
-7. Write a durable report.
-8. Use decision `pass`, `pass-with-followups` or `fail`.
+1. Confirm `verification_policy.mode: behavior_parity`. If it selects
+   `rust_compatibility`, route to `py2rs-review-r0-compatibility` instead.
+2. Confirm the unit id, or confirm the review batch is closed to new units and
+   record every included unit id and manifest state.
+3. Confirm each public interface policy and rollback route.
+4. Build a behavior comparison matrix covering every unit plus cross-unit
+   integration: normal, boundary, error, side effect and persistence cases.
+5. Run existing comparison tests or add non-production fixtures/tests if the repo convention allows reviewer-owned test artifacts.
+6. Compare old/new outputs, errors, logs, side effects and user-visible payloads.
+7. Report findings first, ordered by severity.
+8. Write a durable report.
+9. Use decision `pass`, `pass-with-followups` or `fail` for each unit.
 
 ## Boundaries
 
 - Do not edit production code.
 - Do not approve behavior changes as "close enough" unless the public interface policy explicitly allows the change.
+- Do not convert a failed parity review into `rust_compatibility`; that oracle
+  switch requires an explicit pre-implementation manifest decision.
 - Review the selected public seam, not every transitive dependency or native
   implementation detail below it.
 - Do not chase low-level compiler/runtime/native-library differences such as
@@ -62,7 +69,7 @@ Do not force `py/` and `rs/` paths if the project uses another architecture.
   on them: parser state, tokenizer output, tensor shape/dtype policy, model
   runner payloads, business DTOs, cache keys, schema, and user-visible error
   projection.
-- Do not mark the unit `verified`; the orchestrator updates manifest after required reports pass.
+- Do not mark units `verified`; the orchestrator updates manifest after required reports pass.
 - If behavior differs, write the diff and send it back to the writer.
 
 ## Report
@@ -70,12 +77,13 @@ Do not force `py/` and `rs/` paths if the project uses another architecture.
 Use the project report convention. If none exists:
 
 ```text
-reviews/YYYY-MM-DD-<unit-id>-behavior.md
+reviews/YYYY-MM-DD-<unit-or-batch-id>-behavior.md
 ```
 
 Required sections:
 
 - Scope reviewed
+- Included unit ids and per-unit verdicts
 - Public interfaces inspected
 - Comparison cases and results
 - Findings ordered by severity
@@ -89,3 +97,5 @@ Required sections:
 - Any mismatch has file/line or fixture references.
 - The report is saved.
 - Later R1-R6 work has a clear behavior baseline to rerun.
+- A batch report covers integration behavior and gives every included unit an
+  explicit verdict.

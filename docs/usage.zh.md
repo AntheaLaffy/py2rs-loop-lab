@@ -18,6 +18,7 @@
 - `skills/py2rs-dep-align`
 - `skills/py2rs-env-bootstrap`
 - `skills/py2rs-review-r0-behavior`
+- `skills/py2rs-review-r0-compatibility`（项目存在深层 framework/runtime 兼容边界时）
 
 再根据风险加入 R1-R6 审核 skills。
 
@@ -36,10 +37,12 @@
 2. 识别接受的 seam：CLI、service facade、Tauri command facade、Python module、library API、pipeline stage 或其它项目专属边界。
 3. 为 coordination、dependency bootstrap、writer work 和 review gates 编写或改造项目专属 skills。
 4. 询问总体重写策略、相关框架类别、crate 侦察模式和 crates.io 代理，并写入 `NOTES.md`；默认使用 `standard` 和 agent 侦察。
-5. 询问用户 granularity profile。
-6. 创建或复用 manifest/control plane。
-7. 在存储、license 和项目政策允许时，snapshot 第一层直接 Python 依赖源码。
-8. 在实现前定义回滚路径。
+5. 询问 granularity，并识别 verification boundary；单元默认 `behavior_parity`，只有实现前声明的深层 framework/runtime 边界使用 `rust_compatibility` 和 verified Rust oracle。
+6. 询问每几个已实现单元总审：`per_unit`、每 N 个一批，或 `end_of_scope`；未选择时默认每 3 个一批。
+7. 创建或复用 manifest/control plane，分别记录 manifest partitioning 与 execution policy。大项目可以分片，但执行默认 serial。
+8. 多个单元共享依赖能力时创建 canonical shared dependency registry；`/tmp` 不得作为长期路径。
+9. 在存储、license 和项目政策允许时，snapshot 第一层直接 Python 依赖源码。
+10. 在实现前定义回滚路径。
 
 采集偏好时不添加 crate，也不修改 lockfile。侦察可以选择 `agent`、`manual` 或 `disabled`；关闭可以节省 token，但用户需要熟悉或手动检索 Rust 生态。满足侦察策略并完成依赖对齐后，才真正加入和锁定依赖。
 
@@ -47,7 +50,7 @@
 
 初始化时应该保留 [`teach`](../skills/foundations/teach/SKILL.md) 式渐进模型：mission first、resources before memory、records 记录非显然经验、notes 保存偏好、小单元配合反馈循环。
 
-当 seam 和状态模型稳定后，把固定的项目流程脚手架化为 script-backed skills。架构判断继续留在 reasoning skills；重复的 registry 查询、状态迁移、fixture 编排和报告校验放进经过测试的代码，让后续会话只消费 schema，不再用 prompt 重建机械流程。每个角色独立选择 `prompt` 或 `scaffold`，只把选中形态留在 skill discovery roots，另一形态归档到目录之外；模式切换后开启新会话。
+当 seam 和状态模型稳定后，把固定的项目流程脚手架化为 script-backed skills。架构判断继续留在 reasoning skills；重复的 registry 查询、状态迁移、review batch 收批、fixture 编排和逐单元报告校验放进经过测试的代码，让后续会话只消费 schema，不再用 prompt 重建机械流程。每个角色独立选择 `prompt` 或 `scaffold`，只把选中形态留在 skill discovery roots，另一形态归档到目录之外；模式切换后开启新会话。
 
 ## 切换项目 Skill 模式
 
@@ -80,17 +83,25 @@ python "$switcher" \
 
 只有输出 `notes_acknowledged` 后才开启新会话。如果出现 `manual_recovery_required`，保留 journal，按其中记录的 paths 和 phase 恢复；不要用新副本覆盖 active path。完整不变量见 [`架构`](architecture.zh.md#模式生命周期)。
 
-## 推进一个单元
+## 推进一个写入/审核批次
 
 1. 从 manifest 选择一个迁移单元。
 2. 满足 `NOTES.md` 中的 crate 侦察模式：fresh agent 报告、manual 证据或已确认风险的 disabled 状态。
-3. 在依赖对齐中应用侦察报告/状态和重写偏好。
-4. 添加或识别 behavior fixtures。
-5. 在接受的 seam 后实现。
-6. 把单元标为 `reimplemented`，不是 `verified`。
-7. 运行 R0 行为审核。
-8. 运行 manifest 要求的其它 review roles。
-9. 只有在 review evidence 存在后才能 promotion。
+3. 在依赖对齐中应用侦察报告/状态和重写偏好，并先检查 canonical shared dependencies。
+4. 确认 verification policy：Python behavior parity 或 verified Rust compatibility。
+5. 按 oracle 添加 behavior fixtures 或 application compatibility fixtures。
+6. 在接受的 seam 后实现。
+7. 运行 writer verification；通过后标为 `reimplemented` 并加入 open review batch。
+8. 若尚未达到 review cadence 且没有早期收批条件，继续选择下一个单元。
+9. 达到 N、scope 完成或准备 promotion 时收批；高风险边界按 `risk_override` 决定。
+10. 对每个单元先运行 manifest 选择的 behavior/compatibility R0，再运行其它 roles；每份报告逐单元给 verdict。
+11. 只有单元自己的全部 review evidence 存在后才能 promotion。
+
+## 清单分片与执行
+
+清单分片是大项目的控制面工具，不是并行开关。推荐按 stable contracts 分 shard，再由一个 writer 按 dependency order 串行推进。这样能复用上下文和 Cargo artifacts，避免多个 agent 重复读项目、竞争编译或产生不一致的手写依赖。
+
+只有明确选择 `coordinated_parallel` 时才启动多个 writer。coordinator 独占 root manifest、shared dependency registry、共享 Cargo files 和 build queue；worker 只改 assigned shard，需要共享依赖变更时提交请求并等待。
 
 ## 先构建项目专属 Skills
 
@@ -105,8 +116,10 @@ python "$switcher" \
 - crate 侦察和 registry 代理策略。
 - 每个角色的 `prompt`/`scaffold` 选择和 discovery 目录外归档位置。
 - 依赖展开策略。
+- verification policy 与 oracle evidence。
+- manifest partitioning、默认串行 execution policy、canonical dependency registry 和 Cargo build policy。
 - writer workflow。
-- review roles。
+- review roles、review cadence 和 batch flush rules。
 - promotion rules。
 - 不可违反的项目约束。
 

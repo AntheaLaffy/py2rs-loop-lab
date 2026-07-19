@@ -11,7 +11,10 @@ description: "[DRAFT] 跑通迁移 seam 的最小环境。根据项目选择 FFI
 
 从 `py2rs-dep-align` 的记录读取 seam 类型、applied rewrite profile、crate
 reconnaissance status、实际依赖和 preference deviations。偏好采集本身不能代替
-这份单元级依赖记录。
+这份单元级依赖记录。还要读取 execution policy、canonical shared dependency
+registry，以及并行模式下 coordinator 分配的 Cargo build slot。
+Confirm whether the unit requires legacy behavior parity or compatibility with
+already verified canonical Rust contracts.
 
 - `ffi`: Python 调 Rust extension。
 - `cli`: legacy caller 调 Rust binary 或反向包装。
@@ -60,6 +63,10 @@ env_bootstrap:
   dependency_record: "rewrite-records/example-dependencies.yaml"
   applied_profile: standard
   crate_reconnaissance: complete
+  verification_policy: behavior_parity # behavior_parity | rust_compatibility
+  canonical_dependencies:
+    - "manifest/shared-dependencies.yaml#burn-missing-capability"
+  cargo_build_evidence: "coordinator build record or serial command output"
   cases:
     roundtrip: PASS
     error_mapping: PASS
@@ -77,8 +84,16 @@ env_bootstrap:
   bootstrap the Rust path. Return to reconnaissance/dependency alignment.
 - Cargo manifest/lockfile does not match the applied dependency record: return
   to `py2rs-dep-align`; do not silently add a different framework here.
+- A dependency resolves through `/tmp` or an agent-private copy: reject it and
+  return to dependency alignment so the implementation is promoted into the
+  canonical project root.
+- In coordinated parallel mode, a worker has no coordinator build slot: do not
+  start a competing Cargo build or create an isolated target directory silently.
 - A hard framework preference is incompatible with the seam: return to the user
   for a preference decision, then update `NOTES.md` and the dependency record.
+- The selected `rust_compatibility` oracle is unverified, circular, or missing
+  application-level tensor/codec/model-loading contracts: return to dependency
+  alignment; do not replace the missing evidence with a compile check.
 - Bad error mapping: fix the bridge/adapter before business migration.
 - Deadlock/blocking behavior: define async boundary before business migration.
 - Rollback cannot be shown: the seam is not ready.
@@ -88,6 +103,10 @@ env_bootstrap:
 - The seam works without business rewrite code.
 - Cargo manifests and lockfiles contain the dependencies selected for this seam,
   with no dependency added solely because it appeared in initialization notes.
+- Shared dependencies resolve through registry-recorded project paths, not
+  temporary or agent-private copies.
+- Cargo build evidence follows the serial policy or the coordinator's build queue.
+- The seam proves the declared behavior-parity or Rust-compatibility contracts.
 - Reconnaissance is `complete`, `policy_rejected`, `manual`, or explicitly
   `user_disabled`; the last case remains visible as residual risk.
 - The demo uses the project's actual public interface shape where possible.
