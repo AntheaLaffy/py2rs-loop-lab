@@ -1,6 +1,6 @@
 ---
 name: "py2rs-runtime"
-description: "[DRAFT] 初始化 py2rs 重写偏好并建立迁移控制面：维护 manifest/shards、迁移粒度、behavior-parity 或 Rust-compatibility oracle、审核批次、默认串行执行、协调式并行、canonical shared dependencies、Cargo build 调度、状态机、回滚和审计。"
+description: "[DRAFT] 初始化 py2rs 重写偏好并建立迁移控制面：维护 manifest/shards、迁移粒度、强行为一致性验证、审核批次、默认串行执行、协调式并行、canonical shared dependencies、Cargo build 调度、状态机、回滚和审计。"
 ---
 
 # py2rs-runtime — 迁移控制面与可选路由层
@@ -13,7 +13,7 @@ description: "[DRAFT] 初始化 py2rs 重写偏好并建立迁移控制面：维
 2. 确认项目已有 seam。如果已有稳定 facade/adapter/command/API boundary，优先沿用。
 3. 初始化仓库时，询问或读取用户的 rewrite preferences，并把偏好写入 `NOTES.md`。
 4. 项目事实、seam 和偏好稳定后，为固定操作创建项目专属 script-backed skills。
-5. 初始化仓库或重切 manifest 前，询问或读取 granularity、verification oracle、review cadence、manifest partitioning 和 execution policy；默认串行。
+5. 初始化仓库或重切 manifest 前，询问或读取 granularity、behavior verification seam、review cadence、manifest partitioning 和 execution policy；默认串行。
 6. 只有在 Python 进程仍是统一入口时，才创建 Python runtime router。
 7. 若项目已有控制面，扩展它；不要另起一个与项目冲突的 py2rs manifest。
 
@@ -96,14 +96,13 @@ units:
     current_owner: legacy
     target_owner: rust
     public_interface_policy: "Preserve existing public behavior."
-    verification_policy:
-      mode: behavior_parity # behavior_parity | rust_compatibility
-      oracle:
-        kind: legacy_public_seam # legacy_public_seam | verified_rust_contract
-        evidence: []
-      rationale: "Legacy public behavior remains the oracle."
-      required_contracts: []
-      excluded_legacy_internals: []
+    behavior_verification:
+      legacy_public_seam: "CLI/API/command/event/payload boundary"
+      required_observations: []
+      comparison_policy:
+        default: exact
+        tolerances: []
+      evidence: []
     dependency_recon:
       mode: agent # agent | manual | disabled
       status: pending # not_required | pending | complete | policy_rejected | manual | user_disabled | blocked
@@ -145,7 +144,7 @@ Use these levels as vocabulary, not as rigid categories:
   forcing every helper into its own review.
 - `fine`: more reviews and token cost; useful for public payloads, parsers,
   data structures, error projection, persistence, model IO and dependency
-  compatibility layers.
+  semantic-delta adapters.
 - `ultra_fine`: exceptional; use for high-risk contracts where hallucination,
   dead code, ABI/memory, numeric/model correctness or rollback precision matters
   more than cost.
@@ -176,7 +175,7 @@ Manifest sharding and writer concurrency are separate decisions. Large projects
 may use shards for ownership, dependency order, review scope and resumability
 while a single writer processes them serially. Serial execution is the default
 because multiple agents repeat context, compete for Cargo builds, and can create
-incompatible private dependency implementations.
+conflicting private dependency implementations.
 
 When sharding, parallel execution, shared Rust code, or shared Cargo state is
 relevant, read [execution-policy.md](references/execution-policy.md) completely.
@@ -218,19 +217,25 @@ each unit. `not_required` is valid only when the unit's manifest does not requir
 that report's role. Update unit state individually, so one failure does not
 erase valid evidence for unrelated passing units.
 
-## Verification Policy
+## Behavior Verification
 
-Record one R0 oracle per unit before implementation. Default to
-`behavior_parity` against the legacy public seam. Use `rust_compatibility` only
-when exact legacy parity would require reproducing out-of-scope framework
-internals and the application instead needs compatibility with already verified
-canonical Rust contracts.
+Record one `behavior_verification` block per unit before implementation. It must
+name the legacy public seam, the observable contracts R0 will compare, the
+comparison policy and the evidence used to construct fixtures. Exact comparison
+is the default; model or numeric tolerances require an existing public contract
+or explicit user approval recorded before writer work.
 
-Compatibility mode must reference verified upstream Rust evidence and name the
-application contracts that still cannot break: tensor shape/dtype/layout,
-codec/artifact formats, model loading, schemas, handoff and error projection as
-relevant. Record excluded legacy internals explicitly. Never switch modes merely
-because parity tests failed, and never use an unverified or circular Rust oracle.
+When framework internals differ, select a stable application seam or re-cut the
+unit so those internals remain below the observed boundary. If no such seam can
+support independent old/new comparison, keep the legacy owner or defer the unit.
+Do not substitute a Rust-only oracle or promote from compile and integration
+evidence alone.
+
+For an existing manifest that used the removed dual-oracle schema, migrate a
+legacy-parity entry mechanically into `behavior_verification`. Reject any entry
+that used only rewritten Rust contracts as evidence; do not add a legacy-schema
+shim. Re-select an independently comparable seam, re-cut or defer the unit, or
+keep its legacy owner.
 
 ## Rewrite Preferences
 
@@ -321,11 +326,15 @@ units:
     current_owner: legacy
     target_owner: rust
     public_interface_policy: "Preserve parser output and error projection."
-    verification_policy:
-      mode: behavior_parity
-      oracle:
-        kind: legacy_public_seam
-        evidence: []
+    behavior_verification:
+      legacy_public_seam: "parser adapter input/output boundary"
+      required_observations:
+        - parser output
+        - error projection
+      comparison_policy:
+        default: exact
+        tolerances: []
+      evidence: []
     required_reviews:
       - behavior_reviewer
     verification:
@@ -360,7 +369,7 @@ Rules:
 - `planned`: described but not started.
 - `active`: implementation work has started.
 - `reimplemented`: new path exists but independent review is incomplete.
-- `verified`: the selected R0 evidence and required reviews passed.
+- `verified`: the R0 behavior evidence and required reviews passed.
 - `promoted`: target owner is the default runtime path.
 - `optimized`: post-promotion quality work is complete.
 - `blocked`: cannot proceed without an explicit decision or external dependency.
@@ -368,7 +377,7 @@ Rules:
 Rules:
 
 - Advance state only when reality changed.
-- Do not skip the selected behavior-parity or Rust-compatibility R0 gate.
+- Do not skip the R0 behavior gate.
 - Do not let a writer mark their own work verified.
 - Keep batched units `reimplemented` and on the legacy default route until their
   per-unit verdicts and required reports pass.
@@ -420,7 +429,7 @@ The bridge must preserve public behavior and error semantics until a migration u
 - A canonical shared dependency registry when multiple units consume common
   crates, forks, generated sources or hand-written capabilities.
 - A documented public interface policy for each unit.
-- A declared verification policy and non-circular oracle for each unit.
+- A declared behavior verification seam and comparison policy for each unit.
 - A rollback route for each unit.
 - Review roles and batch membership required before promotion.
 - A history/audit trail for state changes.
@@ -436,8 +445,8 @@ The bridge must preserve public behavior and error semantics until a migration u
   granularity profile and review policy.
 - Open review batches contain only writer-verified `reimplemented` units and
   cannot be promoted before per-unit verdicts exist.
-- Every unit has exactly one selected R0 gate; Rust-compatibility units reference
-  already verified canonical Rust evidence and explicit application contracts.
+- Every unit has R0 behavior verification against a named legacy public seam;
+  units without an independently comparable seam remain legacy-owned or deferred.
 - Rewrite preferences live in `NOTES.md`; repository initialization has not
   introduced speculative Cargo dependencies.
 - Every dependency-sensitive unit distinguishes completed, manual, disabled,

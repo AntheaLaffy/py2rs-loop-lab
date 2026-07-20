@@ -18,10 +18,10 @@ Explain the tradeoff briefly, then ask whether the user wants the standard
 policy or wants to customize the rewrite depth.
 
 - `standard`: default. Compare capability coverage and prefer a maintained crate
-  or crate plus compatibility adapter; use a fixture-backed hand-written path
+  or crate plus semantic-delta adapter; use a fixture-backed hand-written path
   when it is smaller, safer, or easier to roll back.
 - `ecosystem_first`: maximize maintained crate reuse. Hand-write only project
-  semantics and compatibility gaps that existing crates cannot own.
+  semantics and observed semantic gaps that existing crates cannot own.
 - `handwritten_first`: prefer hand-written project and domain behavior when it
   can be bounded by fixtures. General infrastructure crates remain allowed.
 - `domain_from_scratch`: do not reuse crates that own the project's domain

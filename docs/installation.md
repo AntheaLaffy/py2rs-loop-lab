@@ -16,7 +16,6 @@ Recommended starter set:
 - `skills/py2rs-dep-align`
 - `skills/py2rs-env-bootstrap`
 - `skills/py2rs-review-r0-behavior`
-- `skills/py2rs-review-r0-compatibility`
 
 For stricter review coverage, also install:
 
@@ -42,7 +41,6 @@ Please install these skills from https://github.com/AntheaLaffy/py2rs-loop-lab. 
 - skills/py2rs-dep-align
 - skills/py2rs-env-bootstrap
 - skills/py2rs-review-r0-behavior
-- skills/py2rs-review-r0-compatibility
 
 If skill-installer is available, use it. Otherwise, download the repository and copy these directories. Do not leave different versions under multiple discovery roots. Verify each installed directory, then tell me how to trigger the skills on the next turn.
 ```
@@ -77,7 +75,6 @@ cp -R skills/py2rs-crate-recon "$dest/"
 cp -R skills/py2rs-dep-align "$dest/"
 cp -R skills/py2rs-env-bootstrap "$dest/"
 cp -R skills/py2rs-review-r0-behavior "$dest/"
-cp -R skills/py2rs-review-r0-compatibility "$dest/"
 ```
 
 Optional: install the full R1-R6 review gates too:
@@ -115,7 +112,6 @@ Copy-Item -Recurse -Force .\skills\py2rs-crate-recon $dest
 Copy-Item -Recurse -Force .\skills\py2rs-dep-align $dest
 Copy-Item -Recurse -Force .\skills\py2rs-env-bootstrap $dest
 Copy-Item -Recurse -Force .\skills\py2rs-review-r0-behavior $dest
-Copy-Item -Recurse -Force .\skills\py2rs-review-r0-compatibility $dest
 ```
 
 Optional: install the full R1-R6 review gates too:
@@ -170,7 +166,7 @@ a project instance, not a py2rs global default.
 Restart Codex/Claude or start a new conversation so the skills and Context7 rules are loaded. Then, inside your real project repository, say:
 
 ```text
-Use the py2rs-loop-lab approach to study this project and design project-specific rewrite skills for it. Do not change code yet. First recommend migration boundaries, behavior-parity or verified-Rust compatibility oracles, manifest partitioning, serial-first execution policy, control plane, review roles and cadence.
+Use the py2rs-loop-lab approach to study this project and design project-specific rewrite skills for it. Do not change code yet. First recommend migration boundaries, legacy public behavior seams, manifest partitioning, serial-first execution policy, control plane, review roles and cadence.
 ```
 
-Do not start with "convert Python to Rust directly." Establish project facts, choose the seam/oracle, define rollback and canonical dependencies, and let the user decide review cadence. Execution remains serial by default even when the manifest is sharded.
+Do not start with "convert Python to Rust directly." Establish project facts, choose the legacy behavior seam, define rollback and canonical dependencies, and let the user decide review cadence. Execution remains serial by default even when the manifest is sharded.

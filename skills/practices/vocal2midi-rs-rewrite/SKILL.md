@@ -59,7 +59,7 @@ parity and fully hand-written Rust. Dependency reuse and wheel rebuilding are
 complementary. The preferred decision paths are:
 
 1. direct crate coverage when fixtures prove it;
-2. partial crate reuse plus a fixture-bound compatibility adapter when Python
+2. partial crate reuse plus a fixture-bound semantic-delta adapter when Python
    source explains the semantic gaps;
 3. narrow hand-written Rust for semantic gaps or capabilities the crate cannot
    safely own;
@@ -82,29 +82,26 @@ the plan is routed to dependency/bootstrap discovery.
 - Use coordinated parallel work only after explicit user opt-in, stable disjoint
   shard paths, canonical shared prerequisites, an assigned coordinator, and a
   serialized Cargo build queue. Otherwise remain serial.
-- Do not skip the manifest-selected R0 behavior or Rust-compatibility gate.
-- Do not promote a unit without its selected R0 evidence, required reviews, and a
+- Do not skip the R0 behavior gate.
+- Do not promote a unit without its R0 behavior evidence, required reviews, and a
   rollback route.
 
 Completion criterion: the next unit and route are explicit.
 
-## Verification Target
+## Behavior Verification Target
 
-Default preprocessing, parsing, adapter and other legacy-facing units to
-`behavior_parity` against Python public behavior.
+Every unit uses Python/legacy behavior at a named public or application seam as
+its oracle. Record the observable inputs, outputs, errors, state changes and
+handoffs before writer work. Comparison is exact unless an existing public
+contract or explicit pre-implementation user decision records a model or numeric
+tolerance.
 
-At the start of a deep inference chain, explicitly switch applicable units to
-`rust_compatibility` when Python and Rust framework tensor interpretations make
-exact parity require rewriting the deep-learning framework. The target is not
-Python and not the new unit itself. It is the already behavior-verified canonical
-Rust codecs, tensor contracts, model artifact schemas and upstream units named
-by the manifest.
-
-Compatibility review must still prove model/config/weight loading, codec
-roundtrips, tensor shape/dtype/layout handoff, errors and application workflow.
-Framework-internal tensor abstractions may be excluded only when the manifest
-records them before implementation. A failed Python/Rust parity test cannot
-silently trigger this switch.
+For deep inference work, choose a seam that exposes model/config/weight loading,
+codec roundtrips, tensor shape/dtype/layout handoff, errors and application
+workflow without requiring framework internals to become migration targets. If
+the current unit cannot support independent Python/Rust comparison, move the
+seam outward, re-cut the unit, or keep the capability legacy-owned. Compilation
+or canonical Rust-to-Rust contracts cannot replace this behavior evidence.
 
 ## Source Boundary
 
@@ -114,7 +111,7 @@ Borrow from py2rs:
 - reversible state
 - manifest-driven progress
 - writer/reviewer separation
-- one declared R0 behavior-parity or Rust-compatibility gate before promotion
+- one R0 behavior-parity gate before promotion
 
 Borrow from teach:
 
@@ -132,16 +129,16 @@ fits Vocal2Midi.
 1. Ground in state: read manifest, resources, records, selected sources, and
    existing tests.
 2. Run the discovery check and re-cut provisional units when needed.
-3. Define the unit's public boundary, current owner, target owner, verification
-   policy/oracle, verification command, and rollback route.
+3. Define the unit's public boundary, current owner, target owner,
+   `behavior_verification`, verification command, and rollback route.
 4. Check the canonical shared dependency registry, then ensure
    dependency/bootstrap records exist before implementation when the unit needs
    new crates, fixtures, hand-written Burn gaps, or bridge/seam decisions.
-5. Add behavior-parity fixtures or Rust application-compatibility fixtures,
-   according to the declared oracle, before changing production paths.
+5. Add Python/Rust behavior-parity fixtures at the declared seam before changing
+   production paths.
 6. Implement behind the accepted boundary through `vocal2midi-rs-unit-writer`.
 7. Mark implemented-but-unreviewed work as `reimplemented`, not `verified`.
-8. Run or request the selected R0 role through `vocal2midi-rs-review-gate`, then
+8. Run or request the R0 behavior role through `vocal2midi-rs-review-gate`, then
    the other required review roles.
 9. Promote only after reviews pass and rollback remains clear.
 10. Record reusable lessons in `rewrite-in-rust/records/`.
@@ -151,9 +148,8 @@ obvious.
 
 ## Non-Negotiables
 
-- Python public behavior is the oracle for `behavior_parity` units. Deep
-  inference `rust_compatibility` units target only already verified canonical
-  Rust contracts named by the manifest.
+- Python/legacy public behavior is the oracle for every unit. A unit without an
+  independently comparable seam remains legacy-owned or is re-cut before writer work.
 - GUI, Flask/Web handlers, and model inference remain legacy-owned unless a unit
   explicitly changes that boundary.
 - Runtime/control-plane code must not contain business logic.

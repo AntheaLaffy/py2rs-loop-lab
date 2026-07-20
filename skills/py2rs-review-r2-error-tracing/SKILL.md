@@ -9,13 +9,13 @@ R2 确认新 Rust path 在失败时可诊断、可映射、可审计，并且不
 
 ## Preconditions
 
-- The manifest-selected behavior or Rust-compatibility R0 report exists.
+- The R0 behavior report exists.
 - R1 style review is complete or explicitly deferred by the manifest.
 - Every in-scope unit's public error contract is known.
 
 ## Review Focus
 
-- Public errors preserve the selected R0 error contract until protocol changes are explicitly approved.
+- Public errors preserve the R0 behavior baseline until protocol changes are explicitly approved.
 - Internal errors carry operation, path/endpoint/resource id, source error and useful context.
 - Errors stay structured until the public seam requires stringification.
 - Logs/traces include operation and correlation id where the project supports it.
@@ -36,7 +36,7 @@ Default review-gate mode does not edit production code. If explicitly asked to r
 
 - Add context/redaction/error mapping without changing public behavior.
 - Do not approve your own remediation report.
-- Rerun the selected R0 gate after changes.
+- Rerun the R0 behavior gate after changes.
 
 ## Report
 

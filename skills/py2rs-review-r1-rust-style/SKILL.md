@@ -9,9 +9,9 @@ R1 检查 Rust 代码是否从“行为等价但直译”走向可维护的 Rust
 
 ## Preconditions
 
-- The manifest-selected behavior or Rust-compatibility R0 report exists and is `pass` or accepted `pass-with-followups`.
+- The R0 behavior report exists and is `pass` or accepted `pass-with-followups`.
 - Every in-scope manifest unit is at least `reimplemented`.
-- The selected R0 baseline can be rerun after any remediation.
+- The R0 behavior baseline can be rerun after any remediation.
 
 ## Review Focus
 
@@ -35,9 +35,9 @@ R1 检查 Rust 代码是否从“行为等价但直译”走向可维护的 Rust
 
 Default review-gate mode does not edit production code. If the user explicitly asks this skill to fix issues:
 
-- Make only style/structure changes that preserve the selected R0 contracts.
+- Make only style/structure changes that preserve R0 behavior.
 - Do not author the final R1 pass report for your own patch.
-- Require the selected R0 gate to be rerun after the patch.
+- Require the R0 behavior gate to be rerun after the patch.
 
 ## Report
 

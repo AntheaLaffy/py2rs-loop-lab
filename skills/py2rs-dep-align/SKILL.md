@@ -20,7 +20,7 @@ Stage 0 的目标是证明迁移有可行的能力覆盖和集成路径。先对
 - 已有第三方源码快照、vendored sources、native sources、source audit 或等价记录。
 - manifest 中的 `execution_policy`、shared dependency registry，以及当前
   unit/shard 的依赖关系和允许修改的路径。
-- unit 的 `verification_policy` 和 oracle evidence。
+- unit 的 `behavior_verification`、legacy public seam 和 evidence。
 
 ## Apply Rewrite Preferences
 
@@ -31,7 +31,7 @@ behavior evidence, project architecture, or dependency source analysis.
   crate plus adapter, while allowing a full hand-written path when recorded
   evidence shows it is smaller, safer, or easier to roll back.
 - `ecosystem_first`: maximize maintained crate coverage and limit hand-written
-  code to project semantics and compatibility gaps.
+  code to project semantics and observed semantic gaps.
 - `handwritten_first`: start from a fixture-backed hand-written domain path;
   reuse general infrastructure and use a domain crate only when the dependency
   record explains why hand-writing would violate the user's actual goal.
@@ -101,7 +101,7 @@ overwriting the independent research judgment.
 - 在 rewrite preferences 允许 crate reuse 时，引入依赖和造轮子不是互斥选项。
   依赖审查优化的是“最小、可验证、可回滚的
   能力组合”，不是依赖数量最少。成熟 crate 能安全负责的底层能力应优先复用，
-  手写代码负责 Python 兼容层、语义 delta、错误投影、构造器差异、格式化差异
+  手写代码负责 Python 行为投影、语义 delta、错误投影、构造器差异、格式化差异
   或其它被 fixtures 锁住的小范围行为。
 - 在 `standard` 或 `ecosystem_first` 下，审查时同时反对两个极端：为了包名一致
   而强行找 drop-in replacement；以及因为 crate 不能完美匹配 Python 包就退回
@@ -129,8 +129,9 @@ overwriting the independent research judgment.
 
 Before adding a crate, fork, adapter, generated source tree, fixture harness, or
 hand-written implementation, search the project-controlled shared dependency
-registry and canonical source roots. Reuse an existing compatible capability
-instead of creating an agent-local alternative.
+registry and canonical source roots. Reuse an existing capability that satisfies
+the selected behavior and project constraints instead of creating an agent-local
+alternative.
 
 When an upstream crate is incomplete, a hand-written gap can be the correct
 solution. If two or more units may need it, create or re-cut one shared
@@ -148,19 +149,19 @@ Under `coordinated_parallel`, only the coordinator may change shared
 sources, or registry entries. A worker writes a dependency-change request and
 waits; it does not create a private dependency copy to bypass coordination.
 
-## Framework Compatibility Boundary
+## Deep Framework Boundary
 
 Dependency analysis may reveal that Python and Rust deep-learning frameworks
 interpret tensors or model artifacts differently in ways that reach codecs,
 loading, schemas, or inference handoff. Do not propose rewriting the entire
 framework just to preserve its internals.
 
-If exact parity is out of scope, propose `rust_compatibility` before writer work
-and require a user/control-plane decision. The oracle must be already verified
-canonical Rust units, not Python internals or the new unit itself. Record the
-required tensor, codec, artifact, model-loading and error contracts plus the
-legacy internals intentionally excluded. A failed parity test alone is not a
-reason to switch verification mode.
+If the selected seam cannot support exact parity without pulling those internals
+into scope, move the seam outward to an observable application boundary or
+re-cut the migration unit. Record tensor, codec, artifact, model-loading and
+error behavior when it crosses that seam. If no independently comparable legacy
+seam exists, keep the capability legacy-owned or defer the unit. A failed parity
+test is not a reason to replace the legacy oracle with a Rust-only contract.
 
 ## Dependency Source Expansion
 
@@ -258,7 +259,7 @@ replacement。
   error projection 或 cache semantics 可以单独验证。
 - 多个 units 需要同一个 Rust DTO、parser state、fixture harness 或 adapter。
 - rollback route 在当前边界下不清楚。
-- Rust crate 和 Python package 的差异只影响薄 compatibility layer，适合拆出 adapter unit。
+- Rust crate 和 Python package 的差异只影响薄 semantic-delta adapter，适合拆出独立 unit。
 
 输出必须说明是 confirmed、split、merged、renamed、deferred 还是 replaced。
 
@@ -286,7 +287,7 @@ Do not install bridge dependencies that the chosen seam does not need.
 - In coordinated parallel mode, route shared manifest/lockfile changes through
   the coordinator and its serialized Cargo build queue.
 - During implementation and R0, avoid dependency churn. Missing essentials mean Stage 0 was incomplete.
-- During R1-R6, new dependencies are allowed only for the review objective and must preserve the selected R0 contracts.
+- During R1-R6, new dependencies are allowed only for the review objective and must preserve R0 behavior.
 - Prefer Rust Edition 2024 for new Rust crates unless the project constrains toolchain/FFI.
 
 ## Output
@@ -332,14 +333,13 @@ canonical_dependency:
   requested_changes: []
   temporary_sources: disposable_only
 
-verification_policy:
-  mode: behavior_parity # behavior_parity | rust_compatibility
-  oracle:
-    kind: legacy_public_seam # legacy_public_seam | verified_rust_contract
-    evidence: []
-  required_contracts: []
-  excluded_legacy_internals: []
-  rationale: "Why this oracle is correct before implementation starts."
+behavior_verification:
+  legacy_public_seam: "CLI/API/command/model/application boundary"
+  required_observations: []
+  comparison_policy:
+    default: exact
+    tolerances: []
+  evidence: []
 
 rust:
   edition: "2024"
@@ -348,7 +348,7 @@ rust:
       reason: "structured public errors"
 
 dependency_strategy:
-  stance: "reuse stable crate-owned lower layers; hand-write only compatibility gaps"
+  stance: "reuse stable crate-owned lower layers; hand-write only observed semantic gaps"
   not_goal: "minimize dependency count"
   full_handwritten_allowed_when:
     - "crate semantic mismatch is larger than the selected capability"
@@ -397,7 +397,7 @@ hand_written_replacements:
   - capability: "legacy wrapper error text"
     reference_sources:
       - "third_party/sources/example-1.2.3"
-    reason: "crate owns matching; wrapper owns Python-compatible projection"
+    reason: "crate owns matching; wrapper owns the legacy behavior projection"
 
 legacy_kept:
   - capability: proprietary_sdk
@@ -430,9 +430,8 @@ verification:
 - Under coordinated parallel execution, only the coordinator changed shared
   Cargo manifests, lockfiles, workspace members, patch configuration or the
   canonical registry.
-- The verification policy was selected before writer work; compatibility mode
-  names verified Rust evidence and application-level contracts rather than
-  using a failed parity review as justification.
+- `behavior_verification` names an independently comparable legacy public seam
+  before writer work; a failed parity review does not authorize a Rust-only oracle.
 - First-layer direct dependency snapshots are indexed when the project performs
   repository initialization.
 - Second-layer or deeper dependency expansion has public-seam call-path evidence;

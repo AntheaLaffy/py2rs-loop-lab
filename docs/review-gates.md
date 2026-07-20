@@ -2,7 +2,7 @@
 
 [中文版本](review-gates.zh.md)
 
-py2rs separates writing from reviewing. A writer can prepare code and fixtures, but review evidence must come from a separate role. Each unit first selects one R0 oracle in the manifest.
+py2rs separates writing from reviewing. A writer can prepare code and fixtures, but review evidence must come from a separate role. Each unit records a legacy public seam for R0 behavior verification in the manifest.
 
 Independent review does not have to start after every writer pass. The
 manifest's `review_policy` may select per-unit review, one aggregate review every
@@ -15,19 +15,12 @@ Skill: [`py2rs-review-r0-behavior`](../skills/py2rs-review-r0-behavior/SKILL.md)
 
 Purpose: prove that the rewritten implementation preserves the selected public behavior.
 
-R0 behavior checks public inputs, outputs, errors, side effects, persistence and user-visible payloads through the accepted project seam. A batch also checks integration. It applies only to `behavior_parity`.
-
-## R0 Compatibility
-
-Skill: [`py2rs-review-r0-compatibility`](../skills/py2rs-review-r0-compatibility/SKILL.md)
-
-Purpose: prove that a new Rust unit remains application-compatible with already
-behavior-verified canonical Rust contracts.
-
-Use it only for predeclared `rust_compatibility` units, such as tensor handoff,
-codecs, model artifacts and model loading in a deep inference chain. It does not
-compare excluded Python framework internals or claim Python parity, but any
-difference that reaches a declared application contract must fail.
+R0 behavior checks public inputs, outputs, errors, side effects, persistence and
+user-visible payloads through the accepted project seam. A batch also checks
+integration. Deep inference matrices include observable tensor handoff, codecs,
+model artifacts and loading whenever they cross that seam. Comparison is exact
+unless the manifest records an existing or explicitly approved model/numeric
+tolerance.
 
 ## R1 Rust Style
 
@@ -79,7 +72,9 @@ R6 checks CLI/help text, recovery, batching, cache behavior, error readability, 
 
 ## Gate Selection
 
-R0 is mandatory before promotion: each unit selects exactly one of behavior or compatibility. R1-R6 are selected by risk, manifest policy and granularity. Failed parity cannot trigger an ad hoc compatibility switch.
+R0 behavior is mandatory before promotion. R1-R6 are selected by risk, manifest
+policy and granularity. If parity cannot be proven at the current seam, re-cut
+the unit, move the seam outward or keep its legacy owner.
 
 ## Batch Rules
 
@@ -88,8 +83,7 @@ R0 is mandatory before promotion: each unit selects exactly one of behavior or c
 - Flush the batch at its configured size, scope completion or a promotion
   request. `risk_override` controls high-risk boundaries and defaults to an
   early flush.
-- Run the behavior/compatibility R0 selected by each unit first, then the union
-  of additional roles.
+- Run R0 behavior for every unit first, then the union of additional roles.
 - Each role may write one batch report, but it must list unit ids and per-unit
   verdicts. `not_required` is valid only when that unit's manifest does not
   require the role.

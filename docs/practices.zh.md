@@ -47,7 +47,7 @@ Vocal2Midi 是依赖很重的 Python 项目重写。
 - Rust crates 和手写 replacement 是互补关系。
 - 模型清单可以分 shard，但默认单 writer 串行执行；并行必须由 coordinator 管理 canonical dependencies、共享 Cargo files 和 build queue。
 - Burn 缺失能力如果被多个模型消费，先建立一个项目内 canonical prerequisite，禁止各 agent 在 `/tmp` 创建互不可见的长期实现。
-- 常规 legacy-facing 单元保持 Python behavior parity；深度推理链路在入口处可声明 `rust_compatibility`，目标是已经通过强一致性验证的 Rust tensor/codec/artifact contracts。
+- 每个单元都在明确的 legacy public seam 上保持 Python behavior parity；深层推理的 tensor、codec、artifact 和模型加载只要穿透该 seam 就纳入检查，否则重切单元或保留 legacy owner。
 - 低层 native/compiler/runtime 细节默认忽略，除非影响 public behavior、memory/ABI、persistence、security 或 model/numeric correctness。
 
 这是 py2rs 应用于胶水语言项目和重依赖对齐场景的例子。

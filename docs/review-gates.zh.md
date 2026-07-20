@@ -2,7 +2,7 @@
 
 [English version](review-gates.md)
 
-py2rs 把写代码和审核分开。writer 可以准备代码和 fixtures，但 review evidence 必须来自独立角色。每个单元先在 manifest 选择一个 R0 oracle。
+py2rs 把写代码和审核分开。writer 可以准备代码和 fixtures，但 review evidence 必须来自独立角色。每个单元先在 manifest 记录用于 R0 behavior 的 legacy public seam。
 
 独立审核不必在每个 writer 环节后立即启动。manifest 的 `review_policy` 可以选择每单元审核、每 N 个单元总审核，或等小项目的当前 scope 全部写完再总审。用户未选择时默认每 3 个单元一批。
 
@@ -12,15 +12,7 @@ Skill: [`py2rs-review-r0-behavior`](../skills/py2rs-review-r0-behavior/SKILL.md)
 
 目标：证明重写实现保留了选定的公共行为。
 
-R0 behavior 通过项目接受的 seam 检查 public inputs、outputs、errors、side effects、persistence 和 user-visible payloads。批量审核还要检查单元间集成行为。它只用于 `behavior_parity`。
-
-## R0 Compatibility
-
-Skill: [`py2rs-review-r0-compatibility`](../skills/py2rs-review-r0-compatibility/SKILL.md)
-
-目标：证明新 Rust 单元与已经通过强一致性验证的 canonical Rust contracts 保持应用兼容。
-
-它只用于实现前声明的 `rust_compatibility` 单元，例如深度推理链路的 tensor handoff、codec、model artifact 和模型加载。它不比较排除的 Python framework 内部语义，也不声称 Python parity；但任何穿透到声明应用 contract 的差异都必须失败。
+R0 behavior 通过项目接受的 seam 检查 public inputs、outputs、errors、side effects、persistence 和 user-visible payloads。批量审核还要检查单元间集成行为。深层推理只要穿透该 seam，就必须覆盖 tensor handoff、codec、model artifact 和模型加载。默认精确比较；模型或数值容差必须来自已有公共契约或实现前明确批准。
 
 ## R1 Rust Style
 
@@ -72,13 +64,13 @@ R6 检查 CLI/help text、recovery、batching、cache behavior、error readabili
 
 ## Gate Selection
 
-R0 是 promotion 前的必选门：每个单元恰好选择 behavior 或 compatibility 之一。R1-R6 根据风险、manifest policy 和 granularity profile 选择。不能用 parity 失败临时切换 compatibility。
+R0 behavior 是 promotion 前的必选门。R1-R6 根据风险、manifest policy 和 granularity profile 选择。如果当前 seam 无法证明 parity，就重切单元、外移 seam 或保留 legacy owner。
 
 ## Batch Rules
 
 - 每个单元进入 open batch 前必须通过 writer verification，并保持 `reimplemented`。
 - 达到配置数量、scope 完成或准备 promotion 时必须收批；高风险边界是否提前收批由 `risk_override` 决定，默认提前。
-- 一个审核周期先按每个单元的 verification policy 跑 behavior/compatibility R0，再跑其它角色的并集。
+- 一个审核周期先为每个单元跑 R0 behavior，再跑其它角色的并集。
 - 每个角色可以为整批写一份报告，但必须列出 unit ids 和逐单元 verdict；只有 manifest 没要求该角色的单元可以使用 `not_required`。
 - 一个单元失败不会抹掉其它单元的有效证据；只提升所需 verdict 全部通过的单元。
 - 修复失败单元后，按影响范围重跑 R0 和被修复影响的其它门禁。

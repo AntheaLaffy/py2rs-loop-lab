@@ -108,7 +108,7 @@ as the default route, and cannot be promoted until batch review covers it.
 Close a batch when the current scope finishes or before any included unit is
 promoted. With the default `risk_override: flush_batch`, also close at a
 high-precision domain boundary; `follow_cadence` honors the user's selected
-schedule instead. Run the selected R0 verification gate first over the whole
+schedule instead. Run the R0 behavior verification gate first over the whole
 batch, including cross-unit integration, then run the union of additional roles
 required by its units. One report per role may cover the batch, but it must
 record a verdict for every unit so passing units are not blocked by an unrelated
@@ -119,7 +119,7 @@ report's role.
 
 初始化重写仓库时，还要询问或读取项目的 rewrite preferences。它与 granularity
 不同：granularity 决定迁移单元和审核要切多细；rewrite preferences 决定项目
-倾向复用 Rust 生态、手写兼容层，还是从底层重写领域能力，以及各能力类别的
+倾向复用 Rust 生态、手写语义差异 adapter，还是从底层重写领域能力，以及各能力类别的
 框架偏好。
 
 由 `py2rs-runtime` 负责两阶段采集并写入 `NOTES.md`。用户不知道或不想定制时，
@@ -144,7 +144,7 @@ py2rs 自己提供：
 - manifest-driven progress
 - writer/reviewer separation
 - independent quality gates
-- an explicit R0 oracle before optimization
+- an explicit legacy behavior seam before optimization
 
 项目自己提供：
 
@@ -182,24 +182,26 @@ separate public behaviors just to reduce review count.
 提取前置单元或合并边界。渐进式重写的核心是最小可验证分割，而不是维护最初
 列出来的模块列表。
 
-## Verification Policy
+## Behavior Verification Policy
 
-Default each unit to `behavior_parity`: the legacy public seam is the oracle.
-At a deep framework/runtime boundary, exact parity may require rewriting an
-out-of-scope ecosystem while framework-specific tensor semantics still break
-application codecs or model loading. In that case the user may select
-`rust_compatibility` before implementation.
+Every unit records `behavior_verification` before implementation. The legacy
+public seam is the only oracle, and R0 independently proves that the rewritten
+path preserves its observable behavior. Record the inputs, outputs, errors,
+side effects, persistence, user-visible payloads and integration handoffs that
+the selected seam exposes.
 
-`rust_compatibility` changes the oracle to already verified canonical Rust
-contracts. It must name upstream unit/report evidence, required application
-contracts such as tensor shape/dtype/layout, codecs and model artifacts, and the
-legacy framework internals intentionally excluded. It is not a fallback for a
-failed parity review and cannot use the new unit as its own oracle.
+Comparison is exact by default. A model or numeric tolerance is valid only when
+the existing public contract already defines it or the user approves it before
+implementation and the manifest records it explicitly.
 
-Every unit requires exactly one R0 gate before later reviews or promotion:
+Do not introduce a Rust-only oracle when a deep framework or runtime differs.
+Move the seam outward to a stable application boundary or re-cut the migration
+unit so framework internals remain outside it. If no independently verifiable
+legacy seam exists, defer the unit or keep its legacy owner; it cannot be
+promoted on compilation or Rust-to-Rust evidence alone.
 
-- `behavior_reviewer` for `behavior_parity`;
-- `compatibility_reviewer` for `rust_compatibility`.
+Every unit requires `behavior_reviewer` as its R0 gate before later reviews or
+promotion.
 
 ## Architecture Selection
 
@@ -208,7 +210,7 @@ py2rs 默认不强加 runtime architecture。先根据项目形态选 seam。
 | Project Shape | Preferred Seam |
 |---|---|
 | Python process remains orchestrator | `runtime/router.py` + bridge can be appropriate |
-| CLI replacement | command wrapper or binary compatibility surface |
+| CLI replacement | command wrapper or stable binary interface |
 | Service/backend | HTTP/API/service facade or repository adapter |
 | Tauri/desktop | command facade or backend trait seam |
 | Batch/data pipeline | pipeline stage adapter and golden fixtures |
@@ -220,7 +222,7 @@ Only use `py/`, `rs/`, and `runtime/router.py` when they fit the project. If the
 
 1. Ground in project truth: read source-of-truth docs, current manifest, records, architecture and existing tests.
 2. Calibrate or read the user's rewrite preferences, granularity profile, review cadence, manifest partitioning and execution policy.
-3. Define the migration unit, public interface policy and verification oracle.
+3. Define the migration unit, public interface policy and behavior verification seam.
 4. Define current owner, target owner, rollback route and required reviews.
 5. Satisfy the recorded crate reconnaissance mode before dependency alignment.
 6. Check canonical shared dependencies, then align and lock the selected unit's dependencies when its capability coverage requires them.
@@ -228,7 +230,7 @@ Only use `py/`, `rs/`, and `runtime/router.py` when they fit the project. If the
 8. Implement behind the chosen seam.
 9. Run the unit's writer verification and mark it `reimplemented`, not `verified`.
 10. Add the unit to the open review batch; continue writing until the cadence or an early-flush rule closes it.
-11. Run the selected R0 behavior or Rust-compatibility gate over the closed batch first.
+11. Run the R0 behavior gate over the closed batch first.
 12. Run the union of additional review gates as separate roles over that batch.
 13. Record per-unit verdicts and promote only units whose required reviews pass and rollback remains clear.
 14. Record reusable lessons in rewrite records.
@@ -263,14 +265,13 @@ units:
     current_owner: legacy
     target_owner: rust
     public_interface_policy: "Preserve existing CLI/API/command/event/payload behavior."
-    verification_policy:
-      mode: behavior_parity # behavior_parity | rust_compatibility
-      oracle:
-        kind: legacy_public_seam # legacy_public_seam | verified_rust_contract
-        evidence: []
-      rationale: "Legacy public behavior remains the oracle."
-      required_contracts: []
-      excluded_legacy_internals: []
+    behavior_verification:
+      legacy_public_seam: "CLI/API/command/event/payload boundary"
+      required_observations: []
+      comparison_policy:
+        default: exact
+        tolerances: []
+      evidence: []
     dependency_recon:
       mode: agent # agent | manual | disabled
       status: pending
@@ -312,7 +313,7 @@ When batching is enabled, each review batch records an id, scope, unit ids,
 `open | in_review | complete` status, and report paths. Reports carry per-unit
 verdicts rather than treating the batch as one indivisible pass/fail result.
 Manifest state must remain factual: do not mark a unit `verified` without its
-selected R0 evidence and all required independent reports.
+R0 behavior evidence and all required independent reports.
 
 ### Manifest Sharding And Execution
 
@@ -362,7 +363,7 @@ Rules:
 - Coordinated parallel work requires one coordinator to own the root manifest,
   shared dependency registry, shared Cargo manifests/lockfile and serialized
   Cargo build queue. Workers do not mutate those resources.
-- Promotion still requires evidence from the unit's selected R0 gate, even if another
+- Promotion still requires R0 behavior evidence for the unit, even if another
   shard has already advanced.
 - Keep a root index so global rollback and dependency order remain visible.
 
@@ -370,17 +371,16 @@ Rules:
 
 Use separate reviewer roles. A writer never reviews their own code.
 
-- `behavior_reviewer`: public behavior, payloads, compatibility and old/new parity.
-- `compatibility_reviewer`: application compatibility against already verified
-  canonical Rust contracts when the manifest explicitly replaces legacy parity.
+- `behavior_reviewer`: public inputs, outputs, errors, side effects, persistence,
+  payloads and old/new parity at the selected seam.
 - `error_tracing_reviewer`: structured errors, logs, context and redaction.
 - `async_ergonomics_reviewer`: blocking behavior, cancellation, polling, recovery and concurrency ergonomics.
 - `data_algorithm_reviewer`: schema, data structures, complexity, migrations and benchmarks.
 - `rust_style_reviewer`: Rust module shape, ownership, clippy, warnings and maintainability.
 - `frontend_ux_reviewer` or `product_ergonomics_reviewer`: user workflow, accessibility, CLI/help/log ergonomics and text overflow where relevant.
 
-Exactly one declared R0 gate is always first. Other roles depend on the migration
-units in the review batch. Review batching changes when a role runs, not
+R0 behavior review is always first. Other roles depend on the migration units
+in the review batch. Review batching changes when a role runs, not
 writer/reviewer separation or which evidence promotion requires.
 
 ## Dependency Policy
@@ -399,16 +399,16 @@ Dependencies are aligned by capability coverage, not one-to-one package names.
 - Stage 0 should identify the bridge/seam and dependencies required for behavior parity.
 - Python dependency packages may be much broader than the selected migration
   unit. It is valid for Rust crates to cover a large lower layer while a small
-  compatibility adapter or hand-written Rust fills only the observed Python
+  semantic-delta adapter or hand-written Rust fills only the observed Python
   semantic gaps.
 - Do not require perfect package parity. Under `standard`, prefer this ladder:
   1. direct crate coverage when fixtures prove behavior;
-  2. partial crate reuse plus a fixture-bound compatibility adapter when the
+  2. partial crate reuse plus a fixture-bound semantic-delta adapter when the
      Python source explains the semantic delta;
   3. narrow hand-written Rust for semantic gaps or capabilities the crate
      cannot safely own.
 - This `standard` ladder is not a preference for fewer dependencies or full wheel
-  rewriting. Introducing Rust dependencies and writing small compatibility code
+  rewriting. Introducing Rust dependencies and writing small behavior-projection code
   are complementary. Under `standard` or `ecosystem_first`, a dependency review
   should challenge unnecessary hand-written reimplementation when a maintained
   crate can safely own a stable lower layer behind fixtures.
@@ -442,7 +442,7 @@ Dependencies are aligned by capability coverage, not one-to-one package names.
   implementation when the planned unit is too broad, mixes unrelated
   capabilities, or hides a better seam.
 - During implementation and R0, avoid unplanned dependency churn. Missing essentials mean Stage 0 was incomplete.
-- During later quality reviews, new dependencies are allowed when they serve a review objective and the selected R0 gate still passes.
+- During later quality reviews, new dependencies are allowed when they serve a review objective and R0 behavior still passes.
 - Repository initialization records framework choices but does not add speculative
   dependencies. Add and lock a crate only when a seam or selected migration unit
   needs its capability.
@@ -450,7 +450,7 @@ Dependencies are aligned by capability coverage, not one-to-one package names.
 
 ## Non-Negotiables
 
-- The declared behavior-parity or Rust-compatibility oracle precedes Rust elegance.
+- Strong behavior parity at the selected legacy public seam precedes Rust elegance.
 - Public interfaces stay stable unless the migration unit explicitly changes protocol.
 - Runtime/control-plane/adapters do not contain business logic.
 - Every unit has a rollback route.
@@ -467,8 +467,6 @@ Dependencies are aligned by capability coverage, not one-to-one package names.
 - `py2rs-env-bootstrap`: prove the chosen seam works before business migration.
 - `py2rs-runtime`: capture rewrite preferences, define manifest/control-plane and optional routing adapters.
 - `py2rs-review-r0-behavior`: independent behavior parity gate.
-- `py2rs-review-r0-compatibility`: independent application compatibility gate
-  against verified canonical Rust contracts.
 - `py2rs-review-r1-rust-style`: Rust structure and maintainability.
 - `py2rs-review-r2-error-tracing`: error semantics, tracing and diagnosability.
 - `py2rs-review-r3-io-concurrency`: async, blocking IO, cancellation and concurrency.

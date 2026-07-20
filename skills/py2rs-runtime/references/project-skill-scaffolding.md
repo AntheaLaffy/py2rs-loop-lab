@@ -56,13 +56,13 @@ agent environment's project-local convention and record that location.
 
 Generate only the roles the project needs, commonly:
 
-- coordinator: project facts, manifest/shard order, unit selection, verification
-  oracle, review cadence, canonical shared dependencies, Cargo build scheduling,
+- coordinator: project facts, manifest/shard order, unit selection, behavior
+  verification seam, review cadence, canonical shared dependencies, Cargo build scheduling,
   and routing
 - crate reconnaissance/dependency bootstrap: deterministic evidence collectors
-- unit writer: oracle-specific fixture commands, state updates, implementation
+- unit writer: seam-specific behavior fixture commands, state updates, implementation
   boundary, and adding writer-verified units to the open review batch
-- review gates: selected behavior-parity or Rust-compatibility R0, batch-scoped
+- review gates: R0 behavior parity, batch-scoped
   checks, per-unit verdicts, and report validation
 
 For every generated skill:
@@ -75,7 +75,8 @@ For every generated skill:
 - make scripts accept explicit inputs and produce machine-readable output;
 - make batch scripts reject invalid cadence values, promotion with open review
   requirements, and units whose writer verification has not passed;
-- reject missing, circular or post-failure `rust_compatibility` oracle changes;
+- reject missing legacy public seams, Rust-only or circular evidence, and any
+  attempt to replace failed parity with compile or Rust-to-Rust evidence;
 - default generated writer workflows to serial execution even for sharded
   manifests;
 - if coordinated parallel mode is enabled, make scripts enforce coordinator-only

@@ -21,7 +21,8 @@ Read first:
 - rollback route
 - old and new implementation paths or adapters
 - existing tests/fixtures/logs for the behavior
-- `verification_policy`, which must select `behavior_parity`
+- `behavior_verification`, including the legacy public seam, observations,
+  comparison policy and fixture evidence
 
 Do not rely on the writer's explanation when code, tests or docs can answer.
 
@@ -39,13 +40,16 @@ Do not force `py/` and `rs/` paths if the project uses another architecture.
 
 ## Workflow
 
-1. Confirm `verification_policy.mode: behavior_parity`. If it selects
-   `rust_compatibility`, route to `py2rs-review-r0-compatibility` instead.
+1. Confirm `behavior_verification` names an independently comparable legacy
+   public seam. Reject missing seams and evidence that substitutes Rust-only or
+   circular output for legacy behavior.
 2. Confirm the unit id, or confirm the review batch is closed to new units and
    record every included unit id and manifest state.
 3. Confirm each public interface policy and rollback route.
 4. Build a behavior comparison matrix covering every unit plus cross-unit
-   integration: normal, boundary, error, side effect and persistence cases.
+   integration: normal, boundary, error, side effect and persistence cases. For
+   model or framework boundaries, include observable tensor shape/dtype/layout,
+   codecs, artifacts, model loading, schemas, handoffs and error projection.
 5. Run existing comparison tests or add non-production fixtures/tests if the repo convention allows reviewer-owned test artifacts.
 6. Compare old/new outputs, errors, logs, side effects and user-visible payloads.
 7. Report findings first, ordered by severity.
@@ -56,8 +60,10 @@ Do not force `py/` and `rs/` paths if the project uses another architecture.
 
 - Do not edit production code.
 - Do not approve behavior changes as "close enough" unless the public interface policy explicitly allows the change.
-- Do not convert a failed parity review into `rust_compatibility`; that oracle
-  switch requires an explicit pre-implementation manifest decision.
+- Do not replace a failed parity review with a Rust-only oracle. Re-cut the unit,
+  move the seam outward, or keep the legacy owner.
+- Comparison is exact unless the manifest records a tolerance from an existing
+  public contract or explicit pre-implementation user approval.
 - Review the selected public seam, not every transitive dependency or native
   implementation detail below it.
 - Do not chase low-level compiler/runtime/native-library differences such as

@@ -1,6 +1,6 @@
 ---
 name: vocal2midi-rs-review-gate
-description: Review one Vocal2Midi Rust migration unit quality gate without writing production code. Use for Python behavior parity, verified-Rust application compatibility, dependency/seam, error tracing, data/algorithm, Rust style, architecture, ergonomics, or promotion readiness.
+description: Review one Vocal2Midi Rust migration unit quality gate without writing production code. Use for Python/Rust behavior parity, dependency/seam, error tracing, data/algorithm, Rust style, architecture, ergonomics, or promotion readiness.
 ---
 
 # Vocal2Midi Rust Review Gate
@@ -28,11 +28,8 @@ Completion criterion: review findings cite code, fixtures, docs, or commands.
 
 - `behavior_reviewer`: Python/Rust parity, public inputs, outputs, ordering,
   errors, fixtures, and rollback.
-- `compatibility_reviewer`: deep inference compatibility against already
-  behavior-verified canonical Rust tensor, codec, model-artifact and handoff
-  contracts; it does not claim Python framework parity.
 - `dependency_bootstrap_reviewer`: capability coverage, kept-legacy decisions,
-  seam choice, provisional inventory changes, crate reuse plus compatibility
+  seam choice, provisional inventory changes, crate reuse plus semantic-delta
   adapter choices, first-layer source coverage, targeted transitive expansion,
   hand-written replacement choices, low-level boundary decisions, and missing
   crate/fixture risk.
@@ -47,21 +44,21 @@ Completion criterion: review findings cite code, fixtures, docs, or commands.
 - `product_ergonomics_reviewer`: CLI/Web/GUI workflow impact, user-visible
   messages, recovery, and operational ergonomics.
 
-If the user asks for all reviews, run the manifest-selected behavior or
-compatibility R0 role first and state that remaining roles are separate passes.
+If the user asks for all reviews, run the R0 behavior role first and state that
+remaining roles are separate passes.
 
 Completion criterion: one role and one unit are explicit.
 
 ## Review Workflow
 
-1. Confirm unit id, review role, verification mode and oracle evidence.
+1. Confirm unit id, review role, `behavior_verification` and legacy seam evidence.
 2. Confirm the unit stayed inside its minimum boundary, or that dependency
    expansion justifies the re-cut boundary.
 3. Confirm writer/reviewer separation.
 4. For dependency reviews, judge coverage by capability, not package-name or
    top-level API parity. A Rust crate can be acceptable when it owns a stable
    lower layer and the dependency record names Python-specific gaps, reference
-   source, compatibility adapter plan, and fixture evidence. Full hand-written
+   source, semantic-delta adapter plan, and fixture evidence. Full hand-written
    replacement can also be acceptable when the record explains why crate reuse
    plus adapter is worse for this unit.
 5. Inspect only the scope needed for the chosen role.
@@ -85,7 +82,7 @@ Completion criterion: the report can be used as durable promotion evidence.
   manifest; check dependency expansion evidence when that is in scope.
 - Do not fail a dependency decision merely because no Rust crate is a perfect
   Python package drop-in. Fail it only when the selected crate-owned layer,
-  compatibility adapter, Python-source reference, or fixtures are insufficient
+  semantic-delta adapter, Python-source reference, or fixtures are insufficient
   for the claimed behavior.
 - Do not treat fewer Rust dependencies as a success metric. Challenge both
   unnecessary full hand-written rewrites and unnecessary crate integration.
@@ -98,12 +95,11 @@ Completion criterion: the report can be used as durable promotion evidence.
   padding, SIMD branches, or kernel selection matter only when they affect
   public outputs, errors, serialization, persistence, memory/ABI contracts,
   security, or model/numeric correctness.
-- For compatibility reviews, require pre-implementation
-  `verification_policy.mode: rust_compatibility`, verified non-circular Rust
-  oracle evidence, and application fixtures for model loading, codecs, artifacts
-  and tensor handoff. Do not compare excluded Python framework internals, but do
-  fail any difference that breaks the declared Rust application contracts.
-- Never turn a failed behavior review into compatibility approval.
+- For deep inference behavior reviews, require application fixtures for model
+  loading, codecs, artifacts and tensor handoff whenever they cross the selected
+  seam. Comparison is exact unless the manifest records an existing or explicitly
+  approved model/numeric tolerance.
+- Never replace a failed behavior review with compile or Rust-to-Rust evidence.
 - If no issue is found, say so and document residual risk.
 
 ## Completion Response

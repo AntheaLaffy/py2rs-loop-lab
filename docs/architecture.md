@@ -13,7 +13,7 @@ The control plane records:
 - migration units
 - current owner and target owner
 - public interface policy
-- verification policy and oracle evidence
+- behavior verification seam, comparison policy and fixture evidence
 - verification commands or fixtures
 - rollback route
 - required review roles
@@ -83,7 +83,7 @@ Available vocabulary:
 
 - `coarse`: fewer units and fewer reviews; useful for low-risk helpers or cost-sensitive work.
 - `balanced`: default; independently verifiable units without forcing every helper into its own review cycle.
-- `fine`: useful for public payloads, parsers, data structures, error projection, persistence, model IO and dependency compatibility layers.
+- `fine`: useful for public payloads, parsers, data structures, error projection, persistence, model IO and dependency semantic-delta adapters.
 - `ultra_fine`: exceptional; useful when ABI, memory, numeric/model correctness or rollback precision matters more than cost.
 
 Finer units cost more review rounds and tokens. They also reduce hallucination risk, dead-code risk and behavioral drift.
@@ -116,27 +116,27 @@ roles. Each role may write one batch report, but that report must give every
 unit its own verdict. Use `not_required` only when the unit's manifest does not
 require that role, so one failure does not indiscriminately block the rest.
 
-## Verification Target
+## Behavior Verification
 
-Select one R0 oracle per unit before implementation:
+Before implementation, every unit records one independently comparable legacy
+public seam, the observable inputs/outputs/errors/side effects it exposes, its
+comparison policy and fixture evidence. R0 behavior proves strict Python/Rust
+parity at that seam; exact comparison is the default and model or numeric
+tolerances require an existing public contract or explicit pre-implementation
+approval.
 
-- `behavior_parity`: default; the legacy Python public seam is the oracle and a
-  behavior reviewer proves strict parity.
-- `rust_compatibility`: only for a declared deep framework/runtime boundary; the
-  oracle is already behavior-verified canonical Rust contracts and a
-  compatibility reviewer proves application compatibility.
+Deep-learning frameworks may interpret tensor shape, dtype, layout or artifacts
+differently in ways that break codecs, model configuration or weight loading.
+Include those cases in the behavior matrix whenever they cross the selected
+application seam. If framework internals make the current unit unverifiable,
+move the seam outward, re-cut the unit, or keep the capability legacy-owned.
+Compilation and Rust-to-Rust evidence cannot replace old/new behavior evidence,
+and a failed parity review cannot trigger an oracle change.
 
-Python and Rust deep-learning frameworks may interpret tensor shape, dtype,
-layout or artifacts differently in ways that break codecs, model configuration
-or weight loading. Reproducing the entire Python framework is out of scope. At
-that inference-chain entry, `rust_compatibility` may instead test tensor handoff,
-codecs, model loading, schema and error projection while excluding framework
-internals.
-
-Record the rationale, verified Rust unit/report evidence, required contracts and
-excluded legacy internals before writer work. A parity failure cannot silently
-trigger the switch, the new unit cannot be its own oracle, and compatibility
-evidence must not be presented as Python parity.
+This is a breaking control-plane change. Legacy-parity entries from the removed
+dual-oracle schema map mechanically into `behavior_verification`. Rust-only
+entries do not map: reject them, then select a comparable seam, re-cut or defer
+the unit, or keep its legacy owner. Do not add a legacy-schema shim.
 
 ## Rewrite Preferences
 
@@ -175,7 +175,7 @@ An umbrella crate cannot be rejected from its public API alone. `direct` means t
 Allowed paths:
 
 - direct crate coverage when fixtures prove behavior
-- crate-owned stable lower layer plus a compatibility adapter
+- crate-owned stable lower layer plus a semantic-delta adapter
 - narrow hand-written replacement for semantic gaps
 - full hand-written replacement when it is smaller, safer or easier to verify than crate reuse plus adapter
 

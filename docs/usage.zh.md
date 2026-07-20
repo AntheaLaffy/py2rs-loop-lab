@@ -18,7 +18,6 @@
 - `skills/py2rs-dep-align`
 - `skills/py2rs-env-bootstrap`
 - `skills/py2rs-review-r0-behavior`
-- `skills/py2rs-review-r0-compatibility`（项目存在深层 framework/runtime 兼容边界时）
 
 再根据风险加入 R1-R6 审核 skills。
 
@@ -37,7 +36,7 @@
 2. 识别接受的 seam：CLI、service facade、Tauri command facade、Python module、library API、pipeline stage 或其它项目专属边界。
 3. 为 coordination、dependency bootstrap、writer work 和 review gates 编写或改造项目专属 skills。
 4. 询问总体重写策略、相关框架类别、crate 侦察模式和 crates.io 代理，并写入 `NOTES.md`；默认使用 `standard` 和 agent 侦察。
-5. 询问 granularity，并识别 verification boundary；单元默认 `behavior_parity`，只有实现前声明的深层 framework/runtime 边界使用 `rust_compatibility` 和 verified Rust oracle。
+5. 询问 granularity，并为每个单元识别一个可独立比较的 legacy public seam；默认精确比较，模型或数值容差必须在 writer 前来自公共契约或明确记录。
 6. 询问每几个已实现单元总审：`per_unit`、每 N 个一批，或 `end_of_scope`；未选择时默认每 3 个一批。
 7. 创建或复用 manifest/control plane，分别记录 manifest partitioning 与 execution policy。大项目可以分片，但执行默认 serial。
 8. 多个单元共享依赖能力时创建 canonical shared dependency registry；`/tmp` 不得作为长期路径。
@@ -88,13 +87,13 @@ python "$switcher" \
 1. 从 manifest 选择一个迁移单元。
 2. 满足 `NOTES.md` 中的 crate 侦察模式：fresh agent 报告、manual 证据或已确认风险的 disabled 状态。
 3. 在依赖对齐中应用侦察报告/状态和重写偏好，并先检查 canonical shared dependencies。
-4. 确认 verification policy：Python behavior parity 或 verified Rust compatibility。
-5. 按 oracle 添加 behavior fixtures 或 application compatibility fixtures。
+4. 确认 `behavior_verification` 已记录 legacy public seam 和比较策略。
+5. 为该 seam 添加 Python/Rust behavior fixtures。
 6. 在接受的 seam 后实现。
 7. 运行 writer verification；通过后标为 `reimplemented` 并加入 open review batch。
 8. 若尚未达到 review cadence 且没有早期收批条件，继续选择下一个单元。
 9. 达到 N、scope 完成或准备 promotion 时收批；高风险边界按 `risk_override` 决定。
-10. 对每个单元先运行 manifest 选择的 behavior/compatibility R0，再运行其它 roles；每份报告逐单元给 verdict。
+10. 对每个单元先运行 R0 behavior，再运行其它 roles；每份报告逐单元给 verdict。
 11. 只有单元自己的全部 review evidence 存在后才能 promotion。
 
 ## 清单分片与执行
@@ -116,7 +115,7 @@ python "$switcher" \
 - crate 侦察和 registry 代理策略。
 - 每个角色的 `prompt`/`scaffold` 选择和 discovery 目录外归档位置。
 - 依赖展开策略。
-- verification policy 与 oracle evidence。
+- behavior verification seam、比较策略和 fixture evidence。
 - manifest partitioning、默认串行 execution policy、canonical dependency registry 和 Cargo build policy。
 - writer workflow。
 - review roles、review cadence 和 batch flush rules。

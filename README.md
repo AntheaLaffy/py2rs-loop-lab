@@ -15,7 +15,7 @@ If you want open-ended creative exploration, this is the wrong tool. This projec
 1. Start with a real project repository.
 2. Ask AI to study this repository's ideas and architecture.
 3. Have AI design project-specific skills for that repository: coordinator, dependency/bootstrap, writer and review gates.
-4. Initialize the rewrite workspace: mission, resources, notes, records, manifest, rewrite/framework preferences, verification policy, dependency source policy, granularity, review cadence, manifest partitioning and execution policy.
+4. Initialize the rewrite workspace: mission, resources, notes, records, manifest, rewrite/framework preferences, behavior verification policy, dependency source policy, granularity, review cadence, manifest partitioning and execution policy.
 5. Enter the loop: research crate capability paths, align dependencies, write one configured review batch, then run R0 and the required R1-R6 gates over it.
 
 The core output is not Rust code. The core output is a project-specific loop that can keep producing reviewed Rust code.
@@ -25,7 +25,7 @@ The core output is not Rust code. The core output is a project-specific loop tha
 The architecture separates five decisions that are easy to conflate:
 
 - **Dependency and rewrite policy**: initialization records rewrite depth, relevant framework preferences, crate reconnaissance mode and the project's own crates.io proxy in `NOTES.md`. When a capability is actually needed, Context7, registry search and the Cargo graph determine whether to reuse a crate, call a lower backend, add an adapter or hand-write the semantic difference.
-- **Verification target**: `behavior_parity` is the default and uses the legacy Python public seam as its oracle. A deep inference/framework boundary may declare `rust_compatibility` before implementation and target already behavior-verified canonical Rust contracts. This is not an after-the-fact escape from failed parity.
+- **Verification target**: every unit uses a named legacy public seam as its behavior oracle. R0 proves observable Python/Rust parity; exact comparison is the default, with only explicitly recorded public-contract tolerances for model or numeric outputs. If a deep framework boundary cannot expose an independently comparable seam, re-cut the unit or keep its legacy owner.
 - **Review budget and cadence**: `review_budget` selects the roles each unit needs; `review_policy.cadence` chooses per-unit review, one aggregate review every N units, or review after the current scope is fully written. The default is a three-unit batch. Promotion always flushes first; risk boundaries do so by default, but the user may choose to follow the overall cadence.
 - **Manifest partitioning and execution mode**: a large manifest may be split into shards to reduce per-session context and expose dependency/rollback boundaries, but sharding does not mean parallel writing. One serial writer is the default. `coordinated_parallel` requires explicit user acceptance of extra token/build/integration cost plus a coordinator for shared dependencies and the Cargo build queue.
 - **Project skill execution mode**: each coordinator, dependency bootstrap, writer or review role independently selects `prompt` or `scaffold`. Use `prompt` while the workflow still needs creative iteration; switch to `scaffold` only after its inputs, outputs and failure paths are stable and validated, so scripts can own deterministic operations.
@@ -45,7 +45,7 @@ strong behavioral consistency.
 | Manifest, records and reviews | A new session reads owners, rollback routes, prior decisions and evidence instead of rescanning the project or relying on chat memory. |
 | Separate granularity and review cadence | Code stays in small testable, rollbackable units while a writer completes several units continuously and three share one review context by default. Fewer role switches increase rewrite throughput; a small project can use `end_of_scope` and review after all writing finishes. |
 | `review_budget` and per-unit verdicts | Low-risk units do not need the full R0-R6 set. Batch reports reuse context while still allowing passing units to advance independently, preserving strong consistency. |
-| Explicit verification oracle | Normal units retain strict Python/Rust parity. If Python and Rust deep-learning tensor semantics reach codecs or model loading and exact parity would require rewriting the whole framework, the chain switches at its entry to compatibility with verified Rust contracts instead of spending effort on the wrong oracle. |
+| Explicit behavior seam | Every unit names the legacy public seam and observable cases before implementation. Tensor, codec, artifact, model-loading and handoff checks remain in R0 when they cross that seam; framework internals stay out of scope only when they do not affect it. |
 | Sharded but serial by default | A large inventory can be partitioned by stable capability and traversed in dependency order while one writer reuses loaded project and dependency context. This usually consumes fewer tokens and gives steadier throughput than several Codex windows. |
 | Canonical shared dependencies | Concurrent Cargo builds contend for locks and target artifacts, while shared dependencies may also change `Cargo.toml`/`Cargo.lock`. If Burn lacks a required capability, one hand-written canonical prerequisite is created in the project and reused; agents may not build mutually invisible copies under `/tmp`. |
 | Rewrite preferences and relevant-only framework questions | Initialization records crate-reuse depth and asks only about framework categories the project needs. Later units do not repeat the interview or preinstall speculative dependencies. |
@@ -63,7 +63,8 @@ The objective is not "more process is more rigorous." It is to spend tokens
 where judgment is needed, encode stable mechanics once, let writers progress
 continuously for higher rewrite throughput, let the user control review
 frequency, and preserve consistency with canonical dependencies, R0, per-unit
-evidence and promotion rules. The user also controls the verification oracle.
+evidence and promotion rules. The user controls the seam and any explicit
+comparison tolerance before implementation.
 
 ## Stateful Incremental Repository Architecture
 
@@ -73,18 +74,18 @@ py2rs does not rely on one long prompt to finish a migration. It turns the migra
 - `resources`: stores source-of-truth docs, existing tests, dependency source snapshots, protocol notes and trusted references so AI does not rewrite from memory
 - `notes`: captures user preferences, including the rewrite-depth and framework profile, plus project constraints and temporary observations
 - `records`: preserves non-obvious decisions, lessons, behavior differences, dependency tradeoffs and review conclusions for later sessions
-- `manifest` / checklist: records each migration unit's state, owner, target owner, verification oracle and commands, rollback route, required review gates, cadence, partitioning and execution policy; this is the rewrite control plane
+- `manifest` / checklist: records each migration unit's state, owner, target owner, behavior verification seam and commands, rollback route, required review gates, cadence, partitioning and execution policy; this is the rewrite control plane
 - shared dependency registry: records the one project path, owner, consumers and build evidence for shared crates, forks, adapters, generated sources or hand-written capabilities
 - crate reconnaissance: searches by capability, uses Context7 for focused API/feature docs, and follows Cargo dependencies before a high-level crate is rejected or behavior is hand-written
-- dependency alignment: applies the recorded rewrite/framework preferences while mapping Python dependencies, Rust crates, compatibility adapters and hand-written replacements by capability coverage
+- dependency alignment: applies the recorded rewrite/framework preferences while mapping Python dependencies, Rust crates, semantic-delta adapters and hand-written replacements by capability coverage
 - bootstrap: proves the chosen seam handles parameters, return values, errors, logs, tests and rollback before business logic is migrated
-- review evidence: lets a batch share each role's context while requiring per-unit verdicts; a unit advances only after its selected behavior-parity or Rust-compatibility R0 and required R1-R6 reviews
+- review evidence: lets a batch share each role's context while requiring per-unit verdicts; a unit advances only after its R0 behavior and required R1-R6 reviews
 
 The point of this architecture is that the system stays runnable, testable and rollbackable at every migration state. Even if a new AI session takes over, it can continue from the repository's mission, records, manifest and reviews instead of guessing project state.
 
 ### Initialization Preferences And Dependency Timing
 
-The initialization architecture separates user intent from migration state. A two-stage interview records strategy and relevant frameworks, crate reconnaissance/network choices, review cadence, partitioning and execution mode. Execution defaults to serial. Each unit also selects legacy behavior parity or verified-Rust compatibility before implementation. Durable dependency preferences live in `NOTES.md`; verification/review/execution policy, ownership and rollback remain in the manifest.
+The initialization architecture separates user intent from migration state. A two-stage interview records strategy and relevant frameworks, crate reconnaissance/network choices, review cadence, partitioning and execution mode. Execution defaults to serial. Each unit records its legacy public behavior seam and comparison policy before implementation. Durable dependency preferences live in `NOTES.md`; verification/review/execution policy, ownership and rollback remain in the manifest.
 
 Initialization does not preinstall speculative crates. Agent reconnaissance runs in a fresh context and gives dependency alignment a compact evidence report; manual mode lets a Rust-ecosystem expert provide the same evidence. Reconnaissance can be disabled to save tokens, but py2rs then warns that the user must understand or manually research crates.io, docs.rs and feature/dependency paths. Only after alignment are required crates added and locked.
 
@@ -92,12 +93,12 @@ See [Architecture](docs/architecture.md#project-skill-scaffolding) for the mode 
 
 ## What The Rust Output Should Look Like
 
-After using these skills to migrate Python to Rust, the first-stage code is not a line-by-line translation or an immediate style exercise. Legacy-facing units target strict behavior parity. At a declared deep-framework boundary, units instead target application compatibility with already verified canonical Rust contracts, backed by complete tests.
+After using these skills to migrate Python to Rust, the first-stage code is not a line-by-line translation or an immediate style exercise. Every unit targets strict behavior parity at its declared legacy public seam, backed by complete tests. Deep framework internals remain outside scope only when they do not change that observable behavior.
 
 The migrated Rust code should prove:
 
-- `behavior_parity` units match original Python public behavior
-- `rust_compatibility` units load models/artifacts and preserve tensor, codec and handoff contracts against a verified Rust oracle without claiming Python framework parity
+- every unit matches original Python public behavior at its declared seam
+- model/artifact loading, tensor, codec and handoff cases are included whenever they cross that seam
 - edge cases, error paths, fixtures and regressions are covered by tests
 - each migration unit has review evidence instead of relying on code that merely looks correct
 
@@ -122,7 +123,6 @@ If you only want to install the skills into Codex or Claude first, see [`docs/in
 ## Review Gates
 
 - [`R0 behavior`](skills/py2rs-review-r0-behavior/SKILL.md): public behavior parity.
-- [`R0 compatibility`](skills/py2rs-review-r0-compatibility/SKILL.md): application compatibility with verified canonical Rust contracts at deep framework boundaries.
 - [`R1 Rust style`](skills/py2rs-review-r1-rust-style/SKILL.md): Rust structure and maintainability.
 - [`R2 error tracing`](skills/py2rs-review-r2-error-tracing/SKILL.md): errors, logs, context and redaction.
 - [`R3 IO concurrency`](skills/py2rs-review-r3-io-concurrency/SKILL.md): blocking IO, async boundaries and runtime ergonomics.

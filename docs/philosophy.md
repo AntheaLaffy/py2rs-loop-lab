@@ -39,7 +39,7 @@ The human owns the constraints that define the loop:
 - the reason for the rewrite
 - accepted architecture seams
 - public behavior that must not change
-- which units target Python behavior parity and which deep boundaries target verified-Rust compatibility
+- which legacy public seam each unit uses for strict Python behavior parity
 - migration unit granularity
 - review budget, review cadence and token budget
 - dependency source expansion policy
@@ -62,7 +62,7 @@ The AI can still do substantial work:
 - maintain migration state
 - record reusable lessons
 
-The point is to make fast loops produce code that can be understood, reviewed and rolled back. Strict behavior parity is the default; at a boundary where the whole external framework cannot be rewritten, explicit verified-Rust compatibility is more rigorous than pretending to match framework internals.
+The point is to make fast loops produce code that can be understood, reviewed and rolled back. Strict behavior parity at a named legacy public seam is the single verification target. When an external framework is too broad to rewrite, move the seam outward, re-cut the unit or keep its legacy owner instead of introducing a second oracle.
 
 ## Why Skills
 

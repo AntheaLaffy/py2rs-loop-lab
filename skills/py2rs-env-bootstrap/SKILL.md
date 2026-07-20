@@ -12,9 +12,9 @@ description: "[DRAFT] 跑通迁移 seam 的最小环境。根据项目选择 FFI
 从 `py2rs-dep-align` 的记录读取 seam 类型、applied rewrite profile、crate
 reconnaissance status、实际依赖和 preference deviations。偏好采集本身不能代替
 这份单元级依赖记录。还要读取 execution policy、canonical shared dependency
-registry，以及并行模式下 coordinator 分配的 Cargo build slot。
-Confirm whether the unit requires legacy behavior parity or compatibility with
-already verified canonical Rust contracts.
+registry，以及并行模式下 coordinator 分配的 Cargo build slot。Confirm the
+unit's `behavior_verification` names an independently comparable legacy public
+seam.
 
 - `ffi`: Python 调 Rust extension。
 - `cli`: legacy caller 调 Rust binary 或反向包装。
@@ -63,7 +63,15 @@ env_bootstrap:
   dependency_record: "rewrite-records/example-dependencies.yaml"
   applied_profile: standard
   crate_reconnaissance: complete
-  verification_policy: behavior_parity # behavior_parity | rust_compatibility
+  behavior_verification:
+    legacy_public_seam: "tauri command input/output/error boundary"
+    required_observations:
+      - command roundtrip
+      - error projection
+    comparison_policy:
+      default: exact
+      tolerances: []
+    evidence: []
   canonical_dependencies:
     - "manifest/shared-dependencies.yaml#burn-missing-capability"
   cargo_build_evidence: "coordinator build record or serial command output"
@@ -89,11 +97,11 @@ env_bootstrap:
   canonical project root.
 - In coordinated parallel mode, a worker has no coordinator build slot: do not
   start a competing Cargo build or create an isolated target directory silently.
-- A hard framework preference is incompatible with the seam: return to the user
+- A hard framework preference conflicts with the seam: return to the user
   for a preference decision, then update `NOTES.md` and the dependency record.
-- The selected `rust_compatibility` oracle is unverified, circular, or missing
-  application-level tensor/codec/model-loading contracts: return to dependency
-  alignment; do not replace the missing evidence with a compile check.
+- The legacy public seam is missing or cannot support independent old/new
+  comparison: return to dependency alignment to move the seam, re-cut the unit,
+  defer it, or keep its legacy owner. A compile check is not behavior evidence.
 - Bad error mapping: fix the bridge/adapter before business migration.
 - Deadlock/blocking behavior: define async boundary before business migration.
 - Rollback cannot be shown: the seam is not ready.
@@ -106,7 +114,7 @@ env_bootstrap:
 - Shared dependencies resolve through registry-recorded project paths, not
   temporary or agent-private copies.
 - Cargo build evidence follows the serial policy or the coordinator's build queue.
-- The seam proves the declared behavior-parity or Rust-compatibility contracts.
+- The seam proves the declared behavior observations against the legacy path.
 - Reconnaissance is `complete`, `policy_rejected`, `manual`, or explicitly
   `user_disabled`; the last case remains visible as residual risk.
 - The demo uses the project's actual public interface shape where possible.

@@ -75,7 +75,7 @@ Decide by capability, not by Python package name.
 - A Rust crate does not need to be a perfect drop-in to be useful. When a crate
   covers a stable lower layer, such as tokenization, parsing events, IO,
   Unicode tables, numeric primitives, or data structures, prefer reusing that
-  layer and writing a small compatibility adapter for the Python-specific
+  layer and writing a small semantic-delta adapter for the Python-specific
   behavior it does not cover.
 - If Python source for the legacy behavior is available in project files,
   `third_party/`, or another recorded source snapshot, use it to implement only
@@ -86,11 +86,11 @@ Decide by capability, not by Python package name.
   legacy-owned unless the manifest changes.
 - Local vendored Python, Rust, and native sources may be used as references.
 - Use `third_party/source_audit.json` and the source manifests to justify the
-  exact reference source path used for a compatibility adapter or hand-written
+  exact reference source path used for a semantic-delta adapter or hand-written
   replacement.
 - A direct crate replacement is optional. Fewer Rust dependencies is not a
   success metric. Prefer maintained crates for stable lower-layer behavior when
-  fixtures prove the fit, then hand-write the Python compatibility delta.
+  fixtures prove the fit, then hand-write the observed Python semantic delta.
 - Full hand-written replacement is valid when it is smaller, safer, or easier to
   verify and roll back than crate reuse plus adapter. Record the tradeoff:
   semantic mismatch, licensing/security/build/runtime/portability/maintenance
@@ -108,14 +108,18 @@ Decide by capability, not by Python package name.
 Completion criterion: kept-legacy capabilities and Rust-covered capabilities are
 both named.
 
-## Verification Oracle
+## Behavior Verification
 
-Default to Python `behavior_parity`. For deep inference units where framework
-tensor semantics would force an out-of-scope framework rewrite, propose
-`rust_compatibility` before writer work. Name already behavior-verified canonical
-Rust oracle units/reports, required tensor/codec/model-loading contracts, and
-excluded Python framework internals. Do not use the new unit or a failed parity
-test as the oracle or rationale.
+Every unit must name an independently comparable Python/legacy public seam
+before writer work. Record the observable tensor, codec, artifact, model-loading,
+error and workflow behavior that crosses that seam. Comparison is exact unless
+an existing public contract or explicit pre-implementation user decision records
+a model or numeric tolerance.
+
+When framework internals would make the selected unit unverifiable, move the
+seam outward, re-cut the unit, or keep the capability legacy-owned. Do not use
+the new unit, canonical Rust units, compilation, or a failed parity test as a
+replacement oracle.
 
 ## Shared Dependency Coordination
 
@@ -203,14 +207,13 @@ canonical_dependency:
   reuse: []
   requested_changes: []
   temporary_sources: disposable_only
-verification_policy:
-  mode: behavior_parity # behavior_parity | rust_compatibility
-  oracle:
-    kind: legacy_public_seam # legacy_public_seam | verified_rust_contract
-    evidence: []
-  required_contracts: []
-  excluded_legacy_internals: []
-  rationale: "Selected before writer work."
+behavior_verification:
+  legacy_public_seam: "Python model/application boundary"
+  required_observations: []
+  comparison_policy:
+    default: exact
+    tolerances: []
+  evidence: []
 fixtures:
   required:
     - "fixture or golden output needed before writer starts"
@@ -224,7 +227,7 @@ crate_reuse:
       adapter_plan: "how the unit will patch the gaps using legacy source/fixtures"
       decision: use | reject | defer
 dependency_strategy:
-  stance: "reuse stable crate-owned lower layers; hand-write compatibility gaps or full replacement when tradeoff says so"
+  stance: "reuse stable crate-owned lower layers; hand-write observed semantic gaps or a full replacement when the tradeoff says so"
   not_goal: "minimize dependency count"
   full_handwritten_allowed_when:
     - "crate semantic mismatch is larger than the selected capability"
@@ -288,5 +291,5 @@ Also check:
 - no reusable dependency points to `/tmp` or an agent-private workspace
 - coordinated parallel workers did not modify shared Cargo files or bypass the
   coordinator's build queue
-- rust_compatibility units name verified canonical Rust evidence and test
-  application-level tensor, codec, artifact and model-loading contracts
+- every unit names a legacy public seam and tests application-level tensor,
+  codec, artifact and model-loading behavior when it crosses that seam

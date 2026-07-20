@@ -47,7 +47,7 @@ Key shape:
 - Rust crates and hand-written replacements are complementary.
 - Model manifests may be sharded, but one serial writer is the default; parallel work requires a coordinator for canonical dependencies, shared Cargo files and the build queue.
 - When several models need missing Burn functionality, create one canonical project prerequisite instead of mutually invisible long-lived copies under `/tmp`.
-- Normal legacy-facing units keep Python behavior parity. The deep inference chain may declare `rust_compatibility` at its entry and target already behavior-verified Rust tensor/codec/artifact contracts.
+- Every unit keeps Python behavior parity at a named legacy public seam. Deep inference includes tensor, codec, artifact and model-loading cases when they cross that seam; otherwise the unit is re-cut or remains legacy-owned.
 - Low-level native/compiler/runtime details are ignored unless they affect public behavior, memory/ABI, persistence, security or model/numeric correctness.
 
 This is an example of py2rs applied to a glue-language project with heavy dependency alignment.

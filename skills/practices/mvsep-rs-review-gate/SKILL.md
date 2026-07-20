@@ -26,7 +26,7 @@ If the review concerns Tauri or Tailwind behavior, verify against official sourc
 
 ## Choose Exactly One Role
 
-- `behavior_reviewer`: public payloads, command/event compatibility, old vs new behavior.
+- `behavior_reviewer`: public payloads, command/event contract parity, old vs new behavior.
 - `error_tracing_reviewer`: structured errors, log context, redaction, diagnosability.
 - `async_ergonomics_reviewer`: non-blocking behavior, cancellation, polling, user/developer ergonomics.
 - `data_algorithm_reviewer`: schema, data migration, data structures, complexity and benchmarks.

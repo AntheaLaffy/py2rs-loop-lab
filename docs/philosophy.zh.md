@@ -39,7 +39,7 @@ py2rs 把这些思想映射到重写工程里：
 - 为什么要重写。
 - 哪个架构 seam 被接受。
 - 哪些公共行为不能变。
-- 哪些单元以 Python behavior parity 为目标，哪些深层边界改用 verified Rust compatibility。
+- 每个单元以哪个 legacy public seam 作为强 Python behavior parity 的目标。
 - 迁移单元切多细。
 - 审核预算、审核频率和 token 预算。
 - 依赖源码展开策略。
@@ -62,7 +62,7 @@ AI 仍然可以做大量工作：
 - 维护迁移状态。
 - 记录可复用经验。
 
-重点是让快速 loop 仍然产出可理解、可审核、可回滚的代码。强行为一致性是默认目标；在不能重写整个外部 framework 的边界，显式的 verified Rust compatibility 比对 framework internals 做伪 parity 更可靠。
+重点是让快速 loop 仍然产出可理解、可审核、可回滚的代码。明确的 legacy public seam 上的强行为一致性是唯一验证目标；外部 framework 过大时应外移 seam、重切单元或保留 legacy owner，不再引入第二种 oracle。
 
 ## 为什么用 Skills
 
